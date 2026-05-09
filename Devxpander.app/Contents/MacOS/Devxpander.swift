@@ -573,7 +573,17 @@ extension NSApplication {
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelegate {
+    /// Matches an app bundle installed under the **system** `/Applications` folder (after resolving symlinks).
+    /// Development copies elsewhere keep the menu bar fallback (SF Symbol / title) unless they live in `/Applications/…`.
+    private static func isRunningFromSystemApplicationsFolder() -> Bool {
+        let resolvedPath = Bundle.main.bundleURL.standardizedFileURL.resolvingSymlinksInPath().path
+        return resolvedPath.hasPrefix("/Applications/")
+    }
+
     private static func loadMenuBarTemplateImage() -> NSImage? {
+        guard Self.isRunningFromSystemApplicationsFolder() else {
+            return nil
+        }
         guard let rp = Bundle.main.resourcePath else {
             return nil
         }
