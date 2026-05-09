@@ -548,6 +548,9 @@ struct WebView: NSViewRepresentable {
         }
 
         let webView = WKWebView(frame: .zero, configuration: configuration)
+        if #available(macOS 10.14, *) {
+            webView.appearance = NSAppearance(named: .darkAqua)
+        }
         if FileManager.default.fileExists(atPath: indexPath) {
             let indexURL = URL(fileURLWithPath: indexPath)
             let readAccess = URL(fileURLWithPath: webDir, isDirectory: true)
@@ -787,6 +790,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         window.title = "Devxpander - Snippet Manager"
         window.center()
         window.minSize = NSSize(width: 620, height: 520)
+        if #available(macOS 10.14, *) {
+            window.appearance = NSAppearance(named: .darkAqua)
+        }
         window.contentView = NSHostingView(rootView: WebView().frame(maxWidth: .infinity, maxHeight: .infinity))
         window.delegate = self
         self.window = window

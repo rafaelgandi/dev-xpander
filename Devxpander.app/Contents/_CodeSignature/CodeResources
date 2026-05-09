@@ -18,15 +18,15 @@
 		</data>
 		<key>Resources/web/app.css</key>
 		<data>
-		MZrg9JXdWRrabyvd3WqVskNFiQA=
+		vDOofNqccOkbh7ttE1WJvwuU/Xc=
 		</data>
 		<key>Resources/web/app.js</key>
 		<data>
-		dxNe8EIpLIRx5XmF7ivgoCARji0=
+		3408CQSJztn4D+E/tVXmsOSygTY=
 		</data>
 		<key>Resources/web/index.html</key>
 		<data>
-		Rhk8KimKbEAGJHbG0Iw6+FAJk9k=
+		XLbH1sykWZ/9jKMOcS6pJwIgTN4=
 		</data>
 		<key>Resources/web/swift-bridge.js</key>
 		<data>
@@ -39,10 +39,10 @@
 		<dict>
 			<key>cdhash</key>
 			<data>
-			/yo4ow2m+lpfHcSTEN8xsbP8sWQ=
+			eCxsxclIdBHCsclC6Qd11U9YLjY=
 			</data>
 			<key>requirement</key>
-			<string>cdhash H"ff2a38a30da6fa5a5f1dc49310df31b1b3fcb164"</string>
+			<string>cdhash H"782c6cc5c9487411c2b1c942e90775d54f582e36"</string>
 		</dict>
 		<key>Resources/AppIcon.icns</key>
 		<dict>
@@ -69,21 +69,21 @@
 		<dict>
 			<key>hash2</key>
 			<data>
-			cESk082o9LHTX/koPyAankewwdXEoOaQXN0lnvM+/xc=
+			vTue8dUZMmBP2vxXSa+oyYwnoZzNPlmxcOmW5VRalKs=
 			</data>
 		</dict>
 		<key>Resources/web/app.js</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			4Thhm3zcP+meSYiWaWpdbTrUBq2F4RfPdJPxsfVJJ1Y=
+			3X3IqGArqPNIhcjo01V92bfH3HgdGVbMLmxTbPfMUZ0=
 			</data>
 		</dict>
 		<key>Resources/web/index.html</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			19uhnEuMH3AtJJ8LXR/u8Y6aIdAe0+7MhCinhxrWeNY=
+			h0tAry0o5yvyc3QaULpL2IMqixs9cZXToWKh52qFhzk=
 			</data>
 		</dict>
 		<key>Resources/web/swift-bridge.js</key>

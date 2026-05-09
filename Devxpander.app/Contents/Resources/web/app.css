@@ -1,44 +1,45 @@
 :root {
-    color-scheme: light dark;
+    color-scheme: dark;
 
     --font-stack: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", sans-serif;
 
-    /* Ambient depths */
-    --depth-ambient-1: #0c1020;
-    --depth-ambient-2: #141a38;
-    --depth-ambient-3: #1e2650;
+    /* T3-adjacent dark depths (cool zinc) + liquid glass stack */
+    --depth-ambient-1: #09090b;
+    --depth-ambient-2: #0c0c10;
+    --depth-ambient-3: #13131a;
 
     /* Liquid glass tokens */
     --glass-blur: 48px;
     --glass-blur-strong: 64px;
-    --glass-sat: 1.65;
+    --glass-sat: 1.52;
     /* Gutter so large box-shadows are not clipped by scroll parents / viewport */
     --shadow-gutter: 28px;
 
-    --glass-fill: rgb(255 255 255 / 0.08);
-    --glass-fill-hover: rgb(255 255 255 / 0.12);
-    --glass-stroke: rgb(255 255 255 / 0.22);
-    --glass-stroke-soft: rgb(255 255 255 / 0.12);
-    --glass-highlight: rgb(255 255 255 / 0.45);
+    --glass-fill: rgb(255 255 255 / 0.055);
+    --glass-fill-hover: rgb(255 255 255 / 0.095);
+    --glass-stroke: rgb(255 255 255 / 0.15);
+    --glass-stroke-soft: rgb(255 255 255 / 0.09);
+    --glass-highlight: rgb(255 255 255 / 0.38);
     --glass-shadow:
-        0 0 0 1px rgb(0 0 0 / 0.06) inset,
-        0 1px 0 0 rgb(255 255 255 / 0.08) inset,
-        0 24px 80px rgb(0 20 80 / 0.35),
-        0 8px 32px rgb(0 0 0 / 0.25);
+        0 0 0 1px rgb(0 0 0 / 0.42) inset,
+        0 1px 0 0 rgb(255 255 255 / 0.07) inset,
+        0 24px 90px rgb(0 0 0 / 0.52),
+        0 10px 36px rgb(36 16 72 / 0.28);
 
-    --text-primary: rgb(246 249 255);
-    --text-secondary: rgb(216 226 247 / 0.72);
-    --text-tertiary: rgb(180 195 227 / 0.55);
+    --text-primary: rgb(250 250 250);
+    --text-secondary: rgb(161 161 170 / 0.88);
+    --text-tertiary: rgb(113 113 122 / 0.62);
 
-    --accent: rgb(109 173 255);
-    --accent-deep: rgb(59 139 252);
-    --accent-glow: rgb(109 173 255 / 0.45);
+    /* Violet / indigo accent (T3 Code–style tooling) */
+    --accent: rgb(196 181 253);
+    --accent-deep: rgb(124 58 237);
+    --accent-glow: rgb(167 139 250 / 0.42);
 
-    --danger: rgb(255 115 133);
-    --danger-soft: rgb(255 115 133 / 0.18);
+    --danger: rgb(251 113 133);
+    --danger-soft: rgb(251 113 133 / 0.16);
 
-    --ok: rgb(120 239 174);
-    --ok-soft: rgb(120 239 174 / 0.15);
+    --ok: rgb(52 211 153);
+    --ok-soft: rgb(52 211 153 / 0.13);
 
     --ease-spring: cubic-bezier(0.25, 0.46, 0.45, 0.94);
     --ease-fluid: cubic-bezier(0.4, 0, 0.2, 1);
@@ -111,11 +112,11 @@ body {
         z-index: 0;
         pointer-events: none;
         background:
-            radial-gradient(ellipse 90% 70% at 15% 10%, rgb(80 140 255 / 0.35), transparent 55%),
-            radial-gradient(ellipse 80% 60% at 85% 20%, rgb(180 100 255 / 0.22), transparent 50%),
-            radial-gradient(ellipse 70% 90% at 50% 100%, rgb(40 200 255 / 0.18), transparent 45%),
-            linear-gradient(165deg, var(--depth-ambient-3) 0%, var(--depth-ambient-1) 45%, var(--depth-ambient-2) 100%);
-        filter: saturate(1.05);
+            radial-gradient(ellipse 88% 68% at 14% 9%, rgb(139 92 246 / 0.2), transparent 56%),
+            radial-gradient(ellipse 78% 56% at 86% 16%, rgb(99 102 241 / 0.11), transparent 52%),
+            radial-gradient(ellipse 72% 88% at 48% 102%, rgb(56 189 248 / 0.06), transparent 46%),
+            linear-gradient(168deg, var(--depth-ambient-3) 0%, var(--depth-ambient-1) 44%, #060607 100%);
+        filter: saturate(1.06);
     }
 
     &::after {
@@ -124,9 +125,9 @@ body {
         inset: 0;
         z-index: 0;
         pointer-events: none;
-        background: rgb(0 0 0 / 0.12);
-        mix-blend-mode: soft-light;
-        opacity: 0.6;
+        background: rgb(2 2 6 / 0.55);
+        mix-blend-mode: multiply;
+        opacity: 0.85;
     }
 }
 
@@ -141,6 +142,8 @@ body {
         }
 
         &::after {
+            background: rgb(0 0 0 / 0.12);
+            mix-blend-mode: soft-light;
             opacity: 0.25;
         }
     }
@@ -229,7 +232,8 @@ body {
     box-shadow:
         0 0 0 1px rgb(0 0 0 / 0.05) inset,
         0 1px 0 0 rgb(255 255 255 / 0.06) inset,
-        0 12px 40px rgb(0 30 70 / 0.2);
+        0 12px 40px rgb(0 0 0 / 0.35),
+        0 4px 20px rgb(48 24 96 / 0.12);
     transition:
         transform var(--motion-fast) var(--ease-fluid),
         border-color var(--motion-fast) var(--ease-spring),
@@ -276,7 +280,15 @@ body {
     overflow: visible;
     box-shadow:
         var(--glass-shadow),
-        0 0 80px rgb(80 140 255 / 0.04);
+        0 0 88px rgb(124 58 237 / 0.055);
+}
+
+@media (prefers-color-scheme: light) {
+    .card {
+        box-shadow:
+            var(--glass-shadow),
+            0 0 80px rgb(80 140 255 / 0.04);
+    }
 }
 
 .card-header {
@@ -329,11 +341,11 @@ textarea {
     }
 
     &:focus {
-        border-color: color-mix(in srgb, var(--accent) 55%, transparent);
+        border-color: color-mix(in srgb, var(--accent) 50%, transparent);
         box-shadow:
-            0 0 0 3px rgb(109 173 255 / 0.2),
-            0 0 0 1px rgb(109 173 255 / 0.35),
-            inset 0 1px 0 rgb(255 255 255 / 0.1);
+            0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent),
+            0 0 0 1px color-mix(in srgb, var(--accent) 38%, transparent),
+            inset 0 1px 0 rgb(255 255 255 / 0.08);
     }
 }
 
@@ -430,16 +442,16 @@ textarea {
     box-shadow:
         0 0 0 1px rgb(0 0 0 / 0.08) inset,
         0 1px 0 rgb(255 255 255 / 0.35) inset,
-        0 10px 32px rgb(0 110 240 / 0.35),
-        0 2px 8px rgb(0 0 0 / 0.18);
+        0 10px 36px rgb(76 29 149 / 0.42),
+        0 2px 10px rgb(0 0 0 / 0.35);
 
     &:hover {
         filter: brightness(1.06);
         box-shadow:
             0 0 0 1px rgb(0 0 0 / 0.06) inset,
             0 1px 0 rgb(255 255 255 / 0.42) inset,
-            0 14px 40px rgb(0 120 255 / 0.42),
-            0 2px 12px rgb(0 0 0 / 0.2);
+            0 14px 44px rgb(91 33 182 / 0.48),
+            0 2px 12px rgb(0 0 0 / 0.28);
     }
 }
 
@@ -488,14 +500,16 @@ textarea {
     box-shadow:
         0 0 0 1px rgb(0 0 0 / 0.05) inset,
         0 1px 0 rgb(255 255 255 / 0.08) inset,
-        0 4px 14px rgb(0 24 56 / 0.12);
+        0 4px 14px rgb(0 0 0 / 0.28),
+        0 1px 6px rgb(48 24 72 / 0.08);
 
     &:hover {
         filter: brightness(1.03);
         box-shadow:
             0 0 0 1px rgb(0 0 0 / 0.06) inset,
             0 1px 0 rgb(255 255 255 / 0.09) inset,
-            0 6px 18px rgb(0 24 56 / 0.16);
+            0 6px 18px rgb(0 0 0 / 0.32),
+            0 2px 8px rgb(52 28 88 / 0.12);
     }
 }
 
@@ -578,7 +592,8 @@ textarea {
     box-shadow:
         0 0 0 1px rgb(0 0 0 / 0.05) inset,
         0 1px 0 rgb(255 255 255 / 0.06) inset,
-        0 8px 28px rgb(0 24 56 / 0.18);
+        0 8px 28px rgb(0 0 0 / 0.38),
+        0 2px 12px rgb(42 20 78 / 0.14);
     transition:
         border-color var(--motion-fast) var(--ease-fluid),
         transform var(--motion-fast) var(--ease-fluid);
@@ -586,6 +601,15 @@ textarea {
     &:hover {
         border-color: var(--glass-stroke);
         transform: translateY(-1px);
+    }
+}
+
+@media (prefers-color-scheme: light) {
+    .snippet-item {
+        box-shadow:
+            0 0 0 1px rgb(255 255 255 / 0.45) inset,
+            0 1px 0 rgb(255 255 255 / 0.95) inset,
+            0 8px 28px rgb(45 72 140 / 0.12);
     }
 }
 
@@ -602,8 +626,8 @@ textarea {
     font-size: 13px;
     font-weight: 600;
     letter-spacing: -0.02em;
-    color: var(--ok);
-    text-shadow: 0 1px 12px rgb(120 239 174 / 0.25);
+    color: color-mix(in srgb, var(--accent) 88%, rgb(214 230 255) 12%);
+    text-shadow: 0 1px 14px color-mix(in srgb, var(--accent) 32%, transparent);
 }
 
 .snippet-expansion {
@@ -639,7 +663,7 @@ textarea {
         box-shadow:
             0 0 0 1px rgb(0 0 0 / 0.04) inset,
             0 8px 32px rgb(0 140 70 / 0.12),
-            0 0 24px rgb(120 239 174 / 0.12);
+            0 0 24px color-mix(in srgb, var(--ok) 14%, transparent);
         color: var(--text-primary);
     }
 
