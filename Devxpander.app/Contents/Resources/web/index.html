@@ -12,11 +12,9 @@
         <header class="hero">
             <div>
                 <h1>Devxpander</h1>
-                <p>
-                    Snippets live in the menu bar only—no background typing listener. Pick one from the
-                    icon menu to paste at the focused cursor.
-                </p>
+                <p>AI prompt snippets from the menu bar</p>
             </div>
+            <img class="hero-icon" src="./ai_robot.png" alt="AI Robot" width="72" height="72" />
         </header>
 
         <section class="status-grid single">
@@ -69,6 +67,10 @@
                     id="expansionInput"
                     placeholder="Snippet text — multiple lines supported (newline is preserved)."
                     rows="8"
+                    spellcheck="false"
+                    autocorrect="off"
+                    autocomplete="off"
+                    autocapitalize="off"
                 ></textarea>
                 <div class="actions">
                     <button

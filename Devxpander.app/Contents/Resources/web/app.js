@@ -83,6 +83,12 @@ function renderSnippets() {
                 <div class="snippet-item-header">
                     <span class="snippet-title">${title}</span>
                     <div class="actions">
+                        <button class="button button-copy" type="button" data-action="copy" data-index="${index}" title="Copy to clipboard">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"/>
+                                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+                            </svg>
+                        </button>
                         <button class="button button-secondary" type="button" data-action="edit" data-index="${index}">Edit</button>
                         <button class="button button-danger" type="button" data-action="delete" data-index="${index}">Delete</button>
                     </div>
@@ -133,6 +139,17 @@ function startEditing(index) {
     dom.expansionInput.value = snippet.expansion;
     dom.titleInput.focus();
     render();
+}
+
+async function copySnippet(index) {
+    const snippet = state.snippets[index];
+    if (!snippet) return;
+    try {
+        await navigator.clipboard.writeText(snippet.expansion);
+        showFlash('Copied to clipboard.');
+    } catch {
+        showFlash('Failed to copy to clipboard.', true);
+    }
 }
 
 async function deleteSnippet(index) {
@@ -276,7 +293,7 @@ function wireEvents() {
     });
 
     dom.snippetsList.addEventListener('click', (event) => {
-        const target = event.target;
+        const target = event.target.closest('[data-action]');
         if (!(target instanceof HTMLElement)) {
             return;
         }
@@ -284,6 +301,9 @@ function wireEvents() {
         const index = Number(target.dataset.index);
         if (Number.isNaN(index)) {
             return;
+        }
+        if (action === 'copy') {
+            copySnippet(index);
         }
         if (action === 'edit') {
             startEditing(index);

@@ -152,7 +152,7 @@ body {
 .app-shell {
     position: relative;
     z-index: 1;
-    max-width: 960px;
+    max-width: 1000px;
     margin: 0 auto;
     padding:
         calc(36px + var(--shadow-gutter) * 0.35)
@@ -203,6 +203,11 @@ body {
         color: var(--text-secondary);
         font-weight: 400;
     }
+}
+
+.hero-icon {
+    flex-shrink: 0;
+    filter: drop-shadow(0 8px 24px rgb(0 0 0 / 0.35));
 }
 
 @media (prefers-color-scheme: light) {
@@ -495,6 +500,35 @@ textarea {
     }
 }
 
+.button-copy {
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    background: transparent;
+    border: 1px solid var(--glass-stroke-soft);
+    border-radius: 50%;
+    cursor: pointer;
+    transition:
+        color var(--motion-fast) var(--ease-fluid),
+        background-color var(--motion-fast) var(--ease-fluid),
+        border-color var(--motion-fast) var(--ease-fluid),
+        transform var(--motion-fast) var(--ease-spring);
+
+    &:hover {
+        color: var(--accent);
+        background: var(--glass-fill-hover);
+        border-color: var(--glass-stroke);
+    }
+
+    &:active {
+        transform: scale(0.92);
+    }
+}
+
 /* Scroll parents clip outward box-shadow; keep glass read but trim lateral blur on row actions */
 .snippet-item .button-secondary {
     box-shadow:
@@ -551,24 +585,8 @@ textarea {
     flex-direction: column;
     gap: 11px;
     box-sizing: border-box;
-    /* Taller scrollport plus inner padding reserves room so large box-shadows are not clipped */
-    max-height: calc(380px + var(--shadow-gutter) * 2);
-    overflow-y: auto;
     padding: var(--shadow-gutter);
     padding-right: calc(var(--shadow-gutter) + 14px);
-    scrollbar-width: thin;
-    scrollbar-color: var(--glass-stroke-soft) transparent;
-
-    &::-webkit-scrollbar {
-        width: 8px;
-    }
-
-    &::-webkit-scrollbar-thumb {
-        background: color-mix(in srgb, var(--text-secondary) 28%, transparent);
-        border-radius: 99px;
-        border: 2px solid transparent;
-        background-clip: padding-box;
-    }
 
     & > p:first-child:last-child {
         margin: 0;

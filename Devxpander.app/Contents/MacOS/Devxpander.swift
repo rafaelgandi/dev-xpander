@@ -363,9 +363,13 @@ final class AppController {
         if !evaluateAccessibilityTrusted(promptUser: false) {
             return "Accessibility permission is required to insert snippets."
         }
-        if let targetApp {
-            targetApp.activate()
+        guard let targetApp else {
+            return nil
         }
+        guard targetApp.bundleIdentifier != Bundle.main.bundleIdentifier else {
+            return nil
+        }
+        targetApp.activate()
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
             TextInjector.postText(snippet.expansion)
         }
@@ -576,17 +580,7 @@ extension NSApplication {
 }
 
 final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWindowDelegate {
-    /// Matches an app bundle installed under the **system** `/Applications` folder (after resolving symlinks).
-    /// Development copies elsewhere keep the menu bar fallback (SF Symbol / title) unless they live in `/Applications/…`.
-    private static func isRunningFromSystemApplicationsFolder() -> Bool {
-        let resolvedPath = Bundle.main.bundleURL.standardizedFileURL.resolvingSymlinksInPath().path
-        return resolvedPath.hasPrefix("/Applications/")
-    }
-
     private static func loadMenuBarTemplateImage() -> NSImage? {
-        guard Self.isRunningFromSystemApplicationsFolder() else {
-            return nil
-        }
         guard let rp = Bundle.main.resourcePath else {
             return nil
         }
@@ -639,8 +633,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
     func configureStatusItem() {
         if let button = statusItem.button {
-            if let custom = Self.loadMenuBarTemplateImage() {
-                button.image = custom
+            if let icon = Self.compositeMenuBarIcon() {
+                button.image = icon
                 button.imagePosition = .imageOnly
                 button.toolTip = "Devxpander"
             }
@@ -656,6 +650,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         }
         statusMenu.delegate = self
         statusItem.menu = statusMenu
+    }
+
+    private static func compositeMenuBarIcon() -> NSImage? {
+        guard let robotTemplate = loadMenuBarTemplateImage() else {
+            return nil
+        }
+        let size = NSSize(width: 18, height: 18)
+        let composite = NSImage(size: size, flipped: false) { _ in
+            robotTemplate.draw(in: NSRect(origin: .zero, size: size),
+                               from: NSRect(origin: .zero, size: size),
+                               operation: .sourceOver, fraction: 1.0)
+            NSColor.black.setFill()
+            let eyeSize: CGFloat = 2.5
+            NSBezierPath(ovalIn: NSRect(x: 4.25, y: 11.25, width: eyeSize, height: eyeSize)).fill()
+            NSBezierPath(ovalIn: NSRect(x: 8.25, y: 11.25, width: eyeSize, height: eyeSize)).fill()
+            if #available(macOS 10.15, *) {
+                NSBezierPath(roundedRect: NSRect(x: 4.5, y: 5.5, width: 5.0, height: 2.5), xRadius: 1.25, yRadius: 1.25).fill()
+            } else {
+                NSBezierPath(rect: NSRect(x: 4.5, y: 5.5, width: 5.0, height: 2.5)).fill()
+            }
+            return true
+        }
+        return composite
     }
 
     func rebuildMenu() {
@@ -709,7 +726,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
     func menuWillOpen(_ menu: NSMenu) {
         let current = NSWorkspace.shared.frontmostApplication
-        if current?.bundleIdentifier != Bundle.main.bundleIdentifier {
+        if let current, current.bundleIdentifier != Bundle.main.bundleIdentifier {
             lastTargetApp = current
         }
     }
@@ -782,14 +799,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
 
     func createManagerWindow() {
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 720, height: 640),
+            contentRect: NSRect(x: 0, y: 0, width: 1000, height: 640),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
         window.title = "Devxpander - Snippet Manager"
         window.center()
-        window.minSize = NSSize(width: 620, height: 520)
+        window.minSize = NSSize(width: 1000, height: 520)
+        window.maxSize = NSSize(width: 1000, height: CGFloat.greatestFiniteMagnitude)
         if #available(macOS 10.14, *) {
             window.appearance = NSAppearance(named: .darkAqua)
         }

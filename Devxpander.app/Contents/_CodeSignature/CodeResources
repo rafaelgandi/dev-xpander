@@ -6,27 +6,31 @@
 	<dict>
 		<key>Resources/AppIcon.icns</key>
 		<data>
-		O/sZ2utGJ45sODfUsWfYx1qPPf0=
+		mISfVMDa896sZrnGsacnUpP+X/0=
 		</data>
 		<key>Resources/MenuBarTemplate.png</key>
 		<data>
-		/jMskWWkiHDcHJcESLPLexaI/5E=
+		WXt7Im+83/qUdy9pj/ALaHOUhDY=
 		</data>
 		<key>Resources/MenuBarTemplate@2x.png</key>
 		<data>
-		kJao5RB4tUYbK0f/62tK7PYaiME=
+		2pWKH7Rr/YzDZnelqbx8cdJNixo=
+		</data>
+		<key>Resources/web/ai_robot.png</key>
+		<data>
+		4dTZjClYe/jpTfkfBdq+KE9r8c8=
 		</data>
 		<key>Resources/web/app.css</key>
 		<data>
-		vDOofNqccOkbh7ttE1WJvwuU/Xc=
+		gexnl7yp7vnbLop+oeqWSw6K45E=
 		</data>
 		<key>Resources/web/app.js</key>
 		<data>
-		3408CQSJztn4D+E/tVXmsOSygTY=
+		EOmRWkpJrqni2QYb/MyWse5VexQ=
 		</data>
 		<key>Resources/web/index.html</key>
 		<data>
-		XLbH1sykWZ/9jKMOcS6pJwIgTN4=
+		zryMHkAMJ+CWpwpZGPW+hwZV9Kw=
 		</data>
 		<key>Resources/web/swift-bridge.js</key>
 		<data>
@@ -39,51 +43,58 @@
 		<dict>
 			<key>cdhash</key>
 			<data>
-			eCxsxclIdBHCsclC6Qd11U9YLjY=
+			7PzEa9zGak5rL04eFB6TSmv/M10=
 			</data>
 			<key>requirement</key>
-			<string>cdhash H"782c6cc5c9487411c2b1c942e90775d54f582e36"</string>
+			<string>cdhash H"ecfcc46bdcc66a4e6b2f4e1e141e934a6bff335d"</string>
 		</dict>
 		<key>Resources/AppIcon.icns</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			K78W4u91ddn/z+uHN7nDZ58F+B2vu/G/C/ibguAMUSI=
+			9+/AR1MKzei7NdqeInjq5GDNPugiZBIKSGbYNkSnoHo=
 			</data>
 		</dict>
 		<key>Resources/MenuBarTemplate.png</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			AmC2+x+bbAfnkxreCdStGdqLPZDBzhBf6P56BIWYDK0=
+			Qh6WN27KhWaNdp4/DOejEG0LMJCwtLDOLupF8/1sAt8=
 			</data>
 		</dict>
 		<key>Resources/MenuBarTemplate@2x.png</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			RI8u/9Qg7WM4dYg2/X0isQeUeGEFuBkf+ngFQdOfu3w=
+			L+pYCbr/KxK73OldXKs/z8jVN4YqsocjvQ9sw1CLE7s=
+			</data>
+		</dict>
+		<key>Resources/web/ai_robot.png</key>
+		<dict>
+			<key>hash2</key>
+			<data>
+			4DZiyE5XPUcFRtzXXySHJykZbNcwXGTdpEdrNHv7p9M=
 			</data>
 		</dict>
 		<key>Resources/web/app.css</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			vTue8dUZMmBP2vxXSa+oyYwnoZzNPlmxcOmW5VRalKs=
+			TLfkv1vnbUqYR6zZ+bhUkjZEwcIJZf1FEQN9mk0gA9U=
 			</data>
 		</dict>
 		<key>Resources/web/app.js</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			3X3IqGArqPNIhcjo01V92bfH3HgdGVbMLmxTbPfMUZ0=
+			MWPA3FxOy3TkvRCtadbQKtvf7sf01CmEJ3/z3hcNcJY=
 			</data>
 		</dict>
 		<key>Resources/web/index.html</key>
 		<dict>
 			<key>hash2</key>
 			<data>
-			h0tAry0o5yvyc3QaULpL2IMqixs9cZXToWKh52qFhzk=
+			t248muvnJJ9SdpcaZba2JMbykfM+GQ0GkeBhT0w2VkA=
 			</data>
 		</dict>
 		<key>Resources/web/swift-bridge.js</key>
