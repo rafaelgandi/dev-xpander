@@ -313,12 +313,30 @@ enum TextInjector {
             }
         }
 
-        let fullRange = collapsedLineEndings.startIndex..<collapsedLineEndings.endIndex
-        collapsedLineEndings.enumerateSubstrings(in: fullRange, options: [.byComposedCharacterSequences]) { substring, _, _, _ in
-            guard let cluster = substring, !cluster.isEmpty else {
+        func postReturn() {
+            guard let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 0x24, keyDown: true),
+                  let keyUp = CGEvent(keyboardEventSource: source, virtualKey: 0x24, keyDown: false) else {
                 return
             }
-            postCharacters(Array(cluster.utf16))
+            keyDown.setIntegerValueField(.eventSourceUserData, value: marker)
+            keyUp.setIntegerValueField(.eventSourceUserData, value: marker)
+            keyDown.post(tap: .cghidEventTap)
+            keyUp.post(tap: .cghidEventTap)
+        }
+
+        let lines = collapsedLineEndings.components(separatedBy: "\n")
+        for (index, line) in lines.enumerated() {
+            let fullRange = line.startIndex..<line.endIndex
+            line.enumerateSubstrings(in: fullRange, options: [.byComposedCharacterSequences]) { substring, _, _, _ in
+                guard let cluster = substring, !cluster.isEmpty else {
+                    return
+                }
+                postCharacters(Array(cluster.utf16))
+            }
+
+            if index < lines.count - 1 {
+                postReturn()
+            }
         }
     }
 }

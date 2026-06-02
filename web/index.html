@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Devxpander</title>
+    <link rel="stylesheet" href="./app.css" />
+</head>
+<body>
+    <main class="app-shell">
+        <header class="hero">
+            <div>
+                <h1>Devxpander</h1>
+                <p>AI prompt snippets from the menu bar</p>
+            </div>
+            <img class="hero-icon" src="./ai_robot.png" alt="AI Robot" width="72" height="72" />
+        </header>
+
+        <section class="status-grid single">
+            <article class="status-card">
+                <h2>Accessibility</h2>
+                <p id="accessibilityStatus">Unknown</p>
+            </article>
+            <article class="status-card">
+                <h2>Storage</h2>
+                <p id="storagePath">Loading...</p>
+            </article>
+        </section>
+
+        <section class="card">
+            <div class="card-header">
+                <h2>Snippets</h2>
+                <div class="actions">
+                    <button
+                        id="grantPermissionButton"
+                        class="button button-secondary"
+                        type="button"
+                    >
+                        Grant Accessibility
+                    </button>
+                    <button
+                        id="importButton"
+                        class="button button-secondary"
+                        type="button"
+                    >
+                        Import JSON
+                    </button>
+                    <button
+                        id="exportButton"
+                        class="button button-secondary"
+                        type="button"
+                    >
+                        Export JSON
+                    </button>
+                </div>
+            </div>
+
+            <form id="snippetForm" class="snippet-form" novalidate>
+                <input
+                    id="titleInput"
+                    type="text"
+                    placeholder="Menu label (shown in the menu bar list)"
+                    autocomplete="off"
+                />
+                <textarea
+                    id="expansionInput"
+                    placeholder="Snippet text — multiple lines supported (newline is preserved)."
+                    rows="8"
+                    spellcheck="false"
+                    autocorrect="off"
+                    autocomplete="off"
+                    autocapitalize="off"
+                ></textarea>
+                <div class="actions">
+                    <button
+                        id="saveSnippetButton"
+                        class="button button-primary"
+                        type="submit"
+                    >
+                        Save Snippet
+                    </button>
+                    <button
+                        id="cancelEditButton"
+                        class="button button-secondary hidden"
+                        type="button"
+                    >
+                        Cancel Edit
+                    </button>
+                </div>
+            </form>
+
+            <div id="snippetsList" class="snippets-list"></div>
+        </section>
+
+        <p id="flashMessage" class="flash hidden"></p>
+    </main>
+
+    <script src="./swift-bridge.js"></script>
+    <script src="./app.js"></script>
+</body>
+</html>
