@@ -281,66 +281,48 @@ extension JSONEncoder {
     }
 }
 
-enum TextInjector {
-    private static let marker: Int64 = 0x44565850
+enum ClipboardInjector {
+    /// macOS virtual key codes
+    private static let kVK_Command: CGKeyCode = 0x37
+    private static let kVK_ANSI_V: CGKeyCode = 0x09
 
-    static func postText(_ text: String) {
-        let collapsedLineEndings = text
-            .replacingOccurrences(of: "\r\n", with: "\n")
-            .replacingOccurrences(of: "\r", with: "\n")
+    static func pasteText(_ text: String) {
+        let pasteboard = NSPasteboard.general
 
-        guard !collapsedLineEndings.isEmpty else {
+        // 1. Save current clipboard content
+        let oldString = pasteboard.string(forType: .string)
+        var oldData: Data?
+        if let oldString = oldString {
+            oldData = oldString.data(using: .utf8)
+        }
+
+        // 2. Copy snippet to clipboard
+        pasteboard.clearContents()
+        pasteboard.setString(text, forType: .string)
+
+        // 3. Simulate Cmd+V
+        guard let source = CGEventSource(stateID: .combinedSessionState) else {
             return
         }
-        guard let source = CGEventSource(stateID: .hidSystemState) else {
-            return
-        }
-        func postCharacters(_ utf16Units: [UInt16]) {
-            guard !utf16Units.isEmpty else {
-                return
-            }
-            var buffer = utf16Units
-            buffer.withUnsafeMutableBufferPointer { uniBuffer in
-                guard let uniPtr = uniBuffer.baseAddress else {
-                    return
-                }
-                guard let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: true),
-                      let keyUp = CGEvent(keyboardEventSource: source, virtualKey: 0, keyDown: false) else {
-                    return
-                }
-                let length = uniBuffer.count
-                keyDown.keyboardSetUnicodeString(stringLength: length, unicodeString: uniPtr)
-                keyUp.keyboardSetUnicodeString(stringLength: length, unicodeString: uniPtr)
-                keyDown.setIntegerValueField(.eventSourceUserData, value: marker)
-                keyUp.setIntegerValueField(.eventSourceUserData, value: marker)
-                keyDown.post(tap: .cghidEventTap)
-                keyUp.post(tap: .cghidEventTap)
-            }
-        }
 
-        func postReturn() {
-            guard let keyDown = CGEvent(keyboardEventSource: source, virtualKey: 0x24, keyDown: true),
-                  let keyUp = CGEvent(keyboardEventSource: source, virtualKey: 0x24, keyDown: false) else {
-                return
-            }
-            keyDown.setIntegerValueField(.eventSourceUserData, value: marker)
-            keyUp.setIntegerValueField(.eventSourceUserData, value: marker)
-            keyDown.post(tap: .cghidEventTap)
-            keyUp.post(tap: .cghidEventTap)
-        }
+        let cmdDown = CGEvent(keyboardEventSource: source, virtualKey: kVK_Command, keyDown: true)!
+        let vDown = CGEvent(keyboardEventSource: source, virtualKey: kVK_ANSI_V, keyDown: true)!
+        let vUp = CGEvent(keyboardEventSource: source, virtualKey: kVK_ANSI_V, keyDown: false)!
+        let cmdUp = CGEvent(keyboardEventSource: source, virtualKey: kVK_Command, keyDown: false)!
 
-        let lines = collapsedLineEndings.components(separatedBy: "\n")
-        for (index, line) in lines.enumerated() {
-            let fullRange = line.startIndex..<line.endIndex
-            line.enumerateSubstrings(in: fullRange, options: [.byComposedCharacterSequences]) { substring, _, _, _ in
-                guard let cluster = substring, !cluster.isEmpty else {
-                    return
-                }
-                postCharacters(Array(cluster.utf16))
-            }
+        vDown.flags = .maskCommand
+        vUp.flags = .maskCommand
 
-            if index < lines.count - 1 {
-                postReturn()
+        cmdDown.post(tap: .cghidEventTap)
+        vDown.post(tap: .cghidEventTap)
+        vUp.post(tap: .cghidEventTap)
+        cmdUp.post(tap: .cghidEventTap)
+
+        // 4. Restore original clipboard after a short delay
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            pasteboard.clearContents()
+            if let oldData = oldData {
+                pasteboard.setData(oldData, forType: .string)
             }
         }
     }
@@ -393,8 +375,8 @@ final class AppController {
             return nil
         }
         targetApp.activate()
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.12) {
-            TextInjector.postText(snippet.expansion)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+            ClipboardInjector.pasteText(snippet.expansion)
         }
         return nil
     }
