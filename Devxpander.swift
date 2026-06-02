@@ -19,16 +19,19 @@ weak var globalMenuController: AppDelegate?
 struct Snippet: Codable, Hashable {
     var title: String
     var expansion: String
+    var notes: String
 
     enum CodingKeys: String, CodingKey {
         case title
         case keyword
         case expansion
+        case notes
     }
 
-    init(title: String, expansion: String) {
+    init(title: String, expansion: String, notes: String = "") {
         self.title = title
         self.expansion = expansion
+        self.notes = notes
     }
 
     init(from decoder: Decoder) throws {
@@ -51,12 +54,14 @@ struct Snippet: Codable, Hashable {
             )
         }
         expansion = try container.decode(String.self, forKey: .expansion)
+        notes = try container.decodeIfPresent(String.self, forKey: .notes) ?? ""
     }
 
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(title, forKey: .title)
         try container.encode(expansion, forKey: .expansion)
+        try container.encode(notes, forKey: .notes)
     }
 }
 
@@ -242,7 +247,7 @@ final class SnippetStore {
                 continue
             }
             seen.insert(lower)
-            result.append(Snippet(title: label, expansion: item.expansion))
+            result.append(Snippet(title: label, expansion: item.expansion, notes: item.notes))
         }
         return result.sorted {
             $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
@@ -462,7 +467,8 @@ final class WebViewCoordinator: NSObject, WKScriptMessageHandler {
                       let expansion = jsonStringValue(row["expansion"]) else {
                     return nil
                 }
-                return Snippet(title: resolvedTitle, expansion: expansion)
+                let notes = jsonStringValue(row["notes"]) ?? ""
+                return Snippet(title: resolvedTitle, expansion: expansion, notes: notes)
             }
             do {
                 _ = try appController.saveSnippets(snippets)
@@ -540,7 +546,7 @@ final class WebViewCoordinator: NSObject, WKScriptMessageHandler {
 
     private func payloadDictionary(_ payload: AppStatePayload) -> [String: Any] {
         [
-            "snippets": payload.snippets.map { ["title": $0.title, "expansion": $0.expansion] },
+            "snippets": payload.snippets.map { ["title": $0.title, "expansion": $0.expansion, "notes": $0.notes] },
             "hasAccessibilityPermission": payload.hasAccessibilityPermission,
             "storagePath": payload.storagePath,
         ]

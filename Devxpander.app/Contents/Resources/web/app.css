@@ -656,6 +656,16 @@ textarea {
     line-height: 1.55;
 }
 
+.snippet-notes {
+    margin: 10px 0 0;
+    white-space: pre-wrap;
+    color: var(--text-tertiary);
+    font-size: 12px;
+    line-height: 1.5;
+    padding-top: 10px;
+    border-top: 1px dashed var(--glass-stroke-soft);
+}
+
 .flash {
     margin: 0;
     border-radius: 18px;

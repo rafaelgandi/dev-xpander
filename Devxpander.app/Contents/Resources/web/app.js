@@ -7,6 +7,7 @@ const dom = {
     snippetForm: document.getElementById('snippetForm'),
     titleInput: document.getElementById('titleInput'),
     expansionInput: document.getElementById('expansionInput'),
+    notesInput: document.getElementById('notesInput'),
     saveSnippetButton: document.getElementById('saveSnippetButton'),
     cancelEditButton: document.getElementById('cancelEditButton'),
     snippetsList: document.getElementById('snippetsList'),
@@ -37,7 +38,7 @@ function showFlash(message, isError = false) {
 
 function normalizeSnippetRow(row) {
     const titleValue = (row.title ?? row.keyword ?? '').trim();
-    return { title: titleValue, expansion: row.expansion ?? '' };
+    return { title: titleValue, expansion: row.expansion ?? '', notes: row.notes ?? '' };
 }
 
 function escapeHtml(value) {
@@ -78,6 +79,10 @@ function renderSnippets() {
     const html = state.snippets.map((snippet, index) => {
         const title = escapeHtml(snippet.title ?? '');
         const expansion = escapeHtml(snippet.expansion ?? '');
+        const notes = escapeHtml(snippet.notes ?? '').trim();
+        const notesHtml = notes
+            ? `<p class="snippet-notes">${notes}</p>`
+            : '';
         return `
             <article class="snippet-item">
                 <div class="snippet-item-header">
@@ -94,6 +99,7 @@ function renderSnippets() {
                     </div>
                 </div>
                 <p class="snippet-expansion">${expansion}</p>
+                ${notesHtml}
             </article>
         `;
     }).join('');
@@ -112,7 +118,7 @@ function hasSnippetBody(value) {
 async function saveSnippetsToNative() {
     try {
         const payload = await sendMessageToSwift('set-snippets', {
-            snippets: state.snippets.map((s) => ({ title: s.title, expansion: s.expansion })),
+            snippets: state.snippets.map((s) => ({ title: s.title, expansion: s.expansion, notes: s.notes })),
         });
         applyPayload(payload);
     }
@@ -126,6 +132,7 @@ function resetForm() {
     state.editingOriginalTitle = null;
     dom.titleInput.value = '';
     dom.expansionInput.value = '';
+    dom.notesInput.value = '';
     render();
 }
 
@@ -137,6 +144,7 @@ function startEditing(index) {
     state.editingOriginalTitle = snippet.title;
     dom.titleInput.value = snippet.title;
     dom.expansionInput.value = snippet.expansion;
+    dom.notesInput.value = snippet.notes ?? '';
     dom.titleInput.focus();
     render();
 }
@@ -153,7 +161,7 @@ async function copySnippet(index) {
 }
 
 async function deleteSnippet(index) {
-    const previousSnippets = state.snippets.map((s) => ({ title: s.title, expansion: s.expansion }));
+    const previousSnippets = state.snippets.map((s) => ({ title: s.title, expansion: s.expansion, notes: s.notes }));
     const next = state.snippets.filter((_, i) => i !== index);
     state.snippets = next;
     try {
@@ -176,6 +184,7 @@ async function handleFormSubmit(event) {
     event.preventDefault();
     const title = normalizedTitle(dom.titleInput.value);
     const expansion = dom.expansionInput.value;
+    const notes = dom.notesInput.value;
     if (!title) {
         showFlash('Menu label is required.', true);
         return;
@@ -188,12 +197,12 @@ async function handleFormSubmit(event) {
     const duplicateIndex = state.snippets.findIndex(
         (snippet) => snippet.title.toLowerCase() === title.toLowerCase(),
     );
-    const previousSnippets = state.snippets.map((s) => ({ title: s.title, expansion: s.expansion }));
+    const previousSnippets = state.snippets.map((s) => ({ title: s.title, expansion: s.expansion, notes: s.notes }));
     const previousEditing = state.editingOriginalTitle;
 
     if (state.editingOriginalTitle) {
         const filtered = state.snippets.filter((snippet) => snippet.title !== state.editingOriginalTitle);
-        filtered.push({ title, expansion });
+        filtered.push({ title, expansion, notes });
         state.snippets = filtered;
     }
     else {
@@ -201,7 +210,7 @@ async function handleFormSubmit(event) {
             showFlash('That menu label already exists. Edit it instead.', true);
             return;
         }
-        state.snippets = [...state.snippets, { title, expansion }];
+        state.snippets = [...state.snippets, { title, expansion, notes }];
     }
 
     try {
