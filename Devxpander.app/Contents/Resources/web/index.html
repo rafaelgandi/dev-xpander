@@ -9,100 +9,144 @@
 </head>
 <body>
     <main class="app-shell">
-        <header class="hero">
-            <div>
-                <h1>Devxpander</h1>
-                <p>AI prompt snippets from the menu bar</p>
-            </div>
-            <img class="hero-icon" src="./ai_robot.png" alt="AI Robot" width="72" height="72" />
-        </header>
-
-        <section class="status-grid single">
-            <article class="status-card">
-                <h2>Accessibility</h2>
-                <p id="accessibilityStatus">Unknown</p>
-            </article>
-            <article class="status-card">
-                <h2>Storage</h2>
-                <p id="storagePath">Loading...</p>
-            </article>
-        </section>
-
-        <section class="card">
-            <div class="card-header">
+        <aside class="sidebar">
+            <div class="sidebar-header">
                 <h2>Snippets</h2>
-                <div class="actions">
+                <button
+                    id="newSnippetButton"
+                    class="button button-secondary button-compact"
+                    type="button"
+                    title="Start a new snippet"
+                >
+                    + New
+                </button>
+            </div>
+
+            <div class="sidebar-toolbar">
+                <button
+                    id="importButton"
+                    class="button button-secondary button-compact"
+                    type="button"
+                >
+                    Import
+                </button>
+                <button
+                    id="exportButton"
+                    class="button button-secondary button-compact"
+                    type="button"
+                >
+                    Export
+                </button>
+            </div>
+
+            <div class="sidebar-search">
+                <svg class="sidebar-search-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <circle cx="11" cy="11" r="8"/>
+                    <path d="m21 21-4.3-4.3"/>
+                </svg>
+                <input
+                    id="searchInput"
+                    type="search"
+                    placeholder="Search snippets…"
+                    autocomplete="off"
+                    spellcheck="false"
+                    aria-label="Search snippets"
+                />
+                <button
+                    id="searchClearButton"
+                    class="search-clear hidden"
+                    type="button"
+                    title="Clear search"
+                    aria-label="Clear search"
+                >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M18 6 6 18"/>
+                        <path d="m6 6 12 12"/>
+                    </svg>
+                </button>
+            </div>
+
+            <div id="snippetsList" class="snippets-list" role="list"></div>
+        </aside>
+
+        <section class="main-panel">
+            <header class="hero">
+                <div>
+                    <h1>Devxpander</h1>
+                    <p>AI prompt snippets from the menu bar</p>
+                </div>
+                <img class="hero-icon" src="./ai_robot.png" alt="AI Robot" width="72" height="72" />
+            </header>
+
+            <section class="status-grid single">
+                <article class="status-card">
+                    <h2>Accessibility</h2>
+                    <p id="accessibilityStatus">Unknown</p>
                     <button
                         id="grantPermissionButton"
-                        class="button button-secondary"
+                        class="button button-secondary button-compact"
                         type="button"
                     >
                         Grant Accessibility
                     </button>
-                    <button
-                        id="importButton"
-                        class="button button-secondary"
-                        type="button"
-                    >
-                        Import JSON
-                    </button>
-                    <button
-                        id="exportButton"
-                        class="button button-secondary"
-                        type="button"
-                    >
-                        Export JSON
-                    </button>
-                </div>
-            </div>
+                </article>
+                <article class="status-card">
+                    <h2>Storage</h2>
+                    <p id="storagePath">Loading...</p>
+                </article>
+            </section>
 
-            <form id="snippetForm" class="snippet-form" novalidate>
-                <input
-                    id="titleInput"
-                    type="text"
-                    placeholder="Menu label (shown in the menu bar list)"
-                    autocomplete="off"
-                />
-                <textarea
-                    id="expansionInput"
-                    placeholder="Snippet text — multiple lines supported (newline is preserved)."
-                    rows="8"
-                    spellcheck="false"
-                    autocorrect="off"
-                    autocomplete="off"
-                    autocapitalize="off"
-                ></textarea>
-                <textarea
-                    id="notesInput"
-                    placeholder="Notes (optional) — private reminder about this snippet."
-                    rows="3"
-                    spellcheck="false"
-                    autocorrect="off"
-                    autocomplete="off"
-                    autocapitalize="off"
-                ></textarea>
-                <div class="actions">
-                    <button
-                        id="saveSnippetButton"
-                        class="button button-primary"
-                        type="submit"
-                    >
-                        Save Snippet
-                    </button>
-                    <button
-                        id="cancelEditButton"
-                        class="button button-secondary hidden"
-                        type="button"
-                    >
-                        Cancel Edit
-                    </button>
+            <section class="card">
+                <div class="card-header">
+                    <h2 id="editorHeading">New Snippet</h2>
                 </div>
-            </form>
 
-            <div id="snippetsList" class="snippets-list"></div>
+                <form id="snippetForm" class="snippet-form" novalidate>
+                    <input
+                        id="titleInput"
+                        type="text"
+                        placeholder="Menu label (shown in the menu bar list)"
+                        autocomplete="off"
+                    />
+                    <textarea
+                        id="expansionInput"
+                        placeholder="Snippet text — multiple lines supported (newline is preserved)."
+                        rows="10"
+                        spellcheck="false"
+                        autocorrect="off"
+                        autocomplete="off"
+                        autocapitalize="off"
+                    ></textarea>
+                    <textarea
+                        id="notesInput"
+                        placeholder="Notes (optional) — private reminder about this snippet."
+                        rows="3"
+                        spellcheck="false"
+                        autocorrect="off"
+                        autocomplete="off"
+                        autocapitalize="off"
+                    ></textarea>
+                    <div class="actions">
+                        <button
+                            id="saveSnippetButton"
+                            class="button button-primary"
+                            type="submit"
+                        >
+                            Save Snippet
+                        </button>
+                        <button
+                            id="cancelEditButton"
+                            class="button button-secondary hidden"
+                            type="button"
+                        >
+                            Cancel Edit
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <p id="flashMessage" class="flash hidden"></p>
         </section>
-
-        <p id="flashMessage" class="flash hidden"></p>
     </main>
 
     <script src="./swift-bridge.js"></script>

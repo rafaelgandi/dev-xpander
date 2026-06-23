@@ -20,18 +20,21 @@ struct Snippet: Codable, Hashable {
     var title: String
     var expansion: String
     var notes: String
+    var hidden: Bool
 
     enum CodingKeys: String, CodingKey {
         case title
         case keyword
         case expansion
         case notes
+        case hidden
     }
 
-    init(title: String, expansion: String, notes: String = "") {
+    init(title: String, expansion: String, notes: String = "", hidden: Bool = false) {
         self.title = title
         self.expansion = expansion
         self.notes = notes
+        self.hidden = hidden
     }
 
     init(from decoder: Decoder) throws {
@@ -55,6 +58,7 @@ struct Snippet: Codable, Hashable {
         }
         expansion = try container.decode(String.self, forKey: .expansion)
         notes = try container.decodeIfPresent(String.self, forKey: .notes) ?? ""
+        hidden = try container.decodeIfPresent(Bool.self, forKey: .hidden) ?? false
     }
 
     func encode(to encoder: Encoder) throws {
@@ -62,6 +66,9 @@ struct Snippet: Codable, Hashable {
         try container.encode(title, forKey: .title)
         try container.encode(expansion, forKey: .expansion)
         try container.encode(notes, forKey: .notes)
+        if hidden {
+            try container.encode(hidden, forKey: .hidden)
+        }
     }
 }
 
@@ -236,7 +243,7 @@ final class SnippetStore {
 
     private func normalizedSnippets(_ input: [Snippet]) -> [Snippet] {
         var seen = Set<String>()
-        var result: [Snippet] = []
+        var result = [Snippet]()
         for item in input {
             let label = item.title.trimmingCharacters(in: .whitespacesAndNewlines)
             if label.isEmpty {
@@ -247,11 +254,9 @@ final class SnippetStore {
                 continue
             }
             seen.insert(lower)
-            result.append(Snippet(title: label, expansion: item.expansion, notes: item.notes))
+            result.append(Snippet(title: label, expansion: item.expansion, notes: item.notes, hidden: item.hidden))
         }
-        return result.sorted {
-            $0.title.localizedCaseInsensitiveCompare($1.title) == .orderedAscending
-        }
+        return result
     }
 
     private func loadFromDisk() -> [Snippet] {
@@ -450,7 +455,8 @@ final class WebViewCoordinator: NSObject, WKScriptMessageHandler {
                     return nil
                 }
                 let notes = jsonStringValue(row["notes"]) ?? ""
-                return Snippet(title: resolvedTitle, expansion: expansion, notes: notes)
+                let hidden = (row["hidden"] as? Bool) ?? false
+                return Snippet(title: resolvedTitle, expansion: expansion, notes: notes, hidden: hidden)
             }
             do {
                 _ = try appController.saveSnippets(snippets)
@@ -528,7 +534,7 @@ final class WebViewCoordinator: NSObject, WKScriptMessageHandler {
 
     private func payloadDictionary(_ payload: AppStatePayload) -> [String: Any] {
         [
-            "snippets": payload.snippets.map { ["title": $0.title, "expansion": $0.expansion, "notes": $0.notes] },
+            "snippets": payload.snippets.map { ["title": $0.title, "expansion": $0.expansion, "notes": $0.notes, "hidden": $0.hidden] },
             "hasAccessibilityPermission": payload.hasAccessibilityPermission,
             "storagePath": payload.storagePath,
         ]
@@ -579,7 +585,7 @@ struct WebView: NSViewRepresentable {
 extension NSApplication {
     func runDevxpander() {
         let appDelegate = AppDelegate()
-        setActivationPolicy(.accessory)
+        setActivationPolicy(.regular)
         delegate = appDelegate
         run()
     }
@@ -623,8 +629,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         appController.onStateChange = { [weak self] in
             self?.rebuildMenu()
         }
+        setupMainMenu()
         configureStatusItem()
         rebuildMenu()
+        openManager()
+    }
+
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        openManager()
+        return true
+    }
+
+    private func setupMainMenu() {
+        let mainMenu = NSMenu()
+
+        let appMenuItem = NSMenuItem()
+        let appMenu = NSMenu()
+        appMenu.addItem(NSMenuItem(title: "Quit Devxpander", action: #selector(NSApplication.terminate(_:)), keyEquivalent: "q"))
+        appMenuItem.submenu = appMenu
+        mainMenu.addItem(appMenuItem)
+
+        let editMenuItem = NSMenuItem()
+        let editMenu = NSMenu(title: "Edit")
+        editMenu.addItem(NSMenuItem(title: "Cut", action: #selector(NSText.cut(_:)), keyEquivalent: "x"))
+        editMenu.addItem(NSMenuItem(title: "Copy", action: #selector(NSText.copy(_:)), keyEquivalent: "c"))
+        editMenu.addItem(NSMenuItem(title: "Paste", action: #selector(NSText.paste(_:)), keyEquivalent: "v"))
+        editMenu.addItem(NSMenuItem(title: "Select All", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a"))
+        editMenuItem.submenu = editMenu
+        mainMenu.addItem(editMenuItem)
+
+        NSApp.mainMenu = mainMenu
     }
 
     func applicationDidBecomeActive(_ notification: Notification) {
@@ -698,13 +732,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         statusMenu.addItem(NSMenuItem.separator())
 
         let snippets = appController.snippets()
-        if snippets.isEmpty {
+        let visibleSnippets = snippets.filter { !$0.hidden }
+        if visibleSnippets.isEmpty {
             let emptyItem = NSMenuItem(title: "No snippets yet", action: nil, keyEquivalent: "")
             emptyItem.isEnabled = false
             statusMenu.addItem(emptyItem)
         }
         else {
-            for snippet in snippets {
+            for snippet in visibleSnippets {
                 let menuTitle = "\(snippet.title)  →  \(shortPreview(snippet.expansion))"
                 let item = NSMenuItem(title: menuTitle, action: #selector(insertSnippetFromMenu(_:)), keyEquivalent: "")
                 item.target = self

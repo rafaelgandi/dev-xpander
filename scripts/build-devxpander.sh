@@ -14,9 +14,21 @@ if [[ ! -f "$SWIFT_FILE" ]]; then
     exit 1
 fi
 
-APP_ICON_PNG="$ROOT_DIR/app.png"
+DEV_MODE=false
+for arg in "$@"; do
+    if [[ "$arg" == "--dev" ]]; then
+        DEV_MODE=true
+    fi
+done
+
+if $DEV_MODE; then
+    APP_ICON_PNG="$ROOT_DIR/dev.png"
+else
+    APP_ICON_PNG="$ROOT_DIR/app.png"
+fi
+
 if [[ ! -f "$APP_ICON_PNG" ]]; then
-    echo "Missing app.png at $APP_ICON_PNG (Finder / Dock icns source)."
+    echo "Missing icon source at $APP_ICON_PNG (Finder / Dock icns source)."
     exit 1
 fi
 
@@ -51,7 +63,7 @@ cat > "$CONTENTS_DIR/Info.plist" << 'PLIST'
     <key>LSMinimumSystemVersion</key>
     <string>12.0</string>
     <key>LSUIElement</key>
-    <true/>
+    <false/>
     <key>NSHighResolutionCapable</key>
     <true/>
 </dict>
