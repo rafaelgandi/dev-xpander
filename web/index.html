@@ -78,7 +78,7 @@
                 <img class="hero-icon" src="./ai_robot.png" alt="AI Robot" width="72" height="72" />
             </header>
 
-            <section class="status-grid single">
+            <section class="status-grid">
                 <article class="status-card">
                     <h2>Accessibility</h2>
                     <p id="accessibilityStatus">Unknown</p>
@@ -93,6 +93,26 @@
                 <article class="status-card">
                     <h2>Storage</h2>
                     <p id="storagePath">Loading...</p>
+                </article>
+                <article class="status-card">
+                    <h2>OpenCode Binary</h2>
+                    <p id="opencodePath">Auto-detecting…</p>
+                    <div class="status-card-actions">
+                        <button
+                            id="opencodePathBrowseButton"
+                            class="button button-secondary button-compact"
+                            type="button"
+                        >
+                            Browse…
+                        </button>
+                        <button
+                            id="opencodePathResetButton"
+                            class="button button-secondary button-compact"
+                            type="button"
+                        >
+                            Auto
+                        </button>
+                    </div>
                 </article>
             </section>
 
@@ -141,6 +161,21 @@
                         >
                             Cancel Edit
                         </button>
+                        <button
+                            id="aiImproveButton"
+                            class="button button-ai"
+                            type="button"
+                            title="Refine this snippet with AI (kimi k2.6)"
+                        >
+                            <svg class="button-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                                <path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .962 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.962 0z"/>
+                                <path d="M20 3v4"/>
+                                <path d="M22 5h-4"/>
+                                <path d="M4 17v2"/>
+                                <path d="M5 18H3"/>
+                            </svg>
+                            <span id="aiImproveLabel">AI Improve</span>
+                        </button>
                     </div>
                 </form>
             </section>
@@ -148,6 +183,54 @@
             <p id="flashMessage" class="flash hidden"></p>
         </section>
     </main>
+
+    <div id="aiResultModal" class="modal-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="aiResultModalHeading">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h2 id="aiResultModalHeading">AI Improved Prompt</h2>
+                <button
+                    id="aiResultCloseButton"
+                    class="modal-close"
+                    type="button"
+                    title="Close"
+                    aria-label="Close"
+                >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                        <path d="M18 6 6 18"/>
+                        <path d="m6 6 12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <p class="modal-subtitle">Review the improved prompt below. Copy it or close to discard.</p>
+            <textarea
+                id="aiResultOutput"
+                class="modal-output"
+                rows="14"
+                spellcheck="false"
+                autocorrect="off"
+                autocomplete="off"
+                autocapitalize="off"
+                aria-label="AI improved prompt"
+            ></textarea>
+            <div class="modal-actions">
+                <span class="modal-attribution">Powered by Opencode</span>
+                <button
+                    id="aiResultCopyButton"
+                    class="button button-primary"
+                    type="button"
+                >
+                    Copy
+                </button>
+                <button
+                    id="aiResultDoneButton"
+                    class="button button-secondary"
+                    type="button"
+                >
+                    Done
+                </button>
+            </div>
+        </div>
+    </div>
 
     <script src="./swift-bridge.js"></script>
     <script src="./app.js"></script>

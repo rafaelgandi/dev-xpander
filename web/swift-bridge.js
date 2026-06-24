@@ -1,4 +1,4 @@
-function sendMessageToSwift(action, data = {}) {
+function sendMessageToSwift(action, data = {}, timeoutMs = 30000) {
     return new Promise((resolve, reject) => {
         if (!window.webkit?.messageHandlers?.swiftBridge) {
             reject(new Error('Native bridge is not available.'));
@@ -8,21 +8,21 @@ function sendMessageToSwift(action, data = {}) {
         const eventName = `swift:${action}:${suffix}`;
         const errorEventName = `swift:${action}:error:${suffix}`;
 
-        const timeout = window.setTimeout(() => {
+        const handle = window.setTimeout(() => {
             window.removeEventListener(eventName, onSuccess);
             window.removeEventListener(errorEventName, onError);
             reject(new Error('Timed out waiting for native response.'));
-        }, 30000);
+        }, timeoutMs);
 
         function onSuccess(event) {
-            window.clearTimeout(timeout);
+            window.clearTimeout(handle);
             window.removeEventListener(eventName, onSuccess);
             window.removeEventListener(errorEventName, onError);
             resolve(event.detail);
         }
 
         function onError(event) {
-            window.clearTimeout(timeout);
+            window.clearTimeout(handle);
             window.removeEventListener(eventName, onSuccess);
             window.removeEventListener(errorEventName, onError);
             reject(new Error(event.detail ?? 'Native error.'));

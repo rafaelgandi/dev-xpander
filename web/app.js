@@ -1,6 +1,9 @@
 const dom = {
     grantPermissionButton: document.getElementById('grantPermissionButton'),
     accessibilityStatus: document.getElementById('accessibilityStatus'),
+    opencodePath: document.getElementById('opencodePath'),
+    opencodePathBrowseButton: document.getElementById('opencodePathBrowseButton'),
+    opencodePathResetButton: document.getElementById('opencodePathResetButton'),
     storagePath: document.getElementById('storagePath'),
     importButton: document.getElementById('importButton'),
     exportButton: document.getElementById('exportButton'),
@@ -12,6 +15,13 @@ const dom = {
     notesInput: document.getElementById('notesInput'),
     saveSnippetButton: document.getElementById('saveSnippetButton'),
     cancelEditButton: document.getElementById('cancelEditButton'),
+    aiImproveButton: document.getElementById('aiImproveButton'),
+    aiImproveLabel: document.getElementById('aiImproveLabel'),
+    aiResultModal: document.getElementById('aiResultModal'),
+    aiResultOutput: document.getElementById('aiResultOutput'),
+    aiResultCopyButton: document.getElementById('aiResultCopyButton'),
+    aiResultCloseButton: document.getElementById('aiResultCloseButton'),
+    aiResultDoneButton: document.getElementById('aiResultDoneButton'),
     snippetsList: document.getElementById('snippetsList'),
     searchInput: document.getElementById('searchInput'),
     searchClearButton: document.getElementById('searchClearButton'),
@@ -22,6 +32,7 @@ const state = {
     snippets: [],
     hasAccessibilityPermission: false,
     storagePath: '',
+    opencodePath: '',
     editingOriginalTitle: null,
     searchQuery: '',
 };
@@ -70,12 +81,14 @@ function applyPayload(payload) {
         : [];
     state.hasAccessibilityPermission = Boolean(payload.hasAccessibilityPermission);
     state.storagePath = payload.storagePath ?? '';
+    state.opencodePath = payload.opencodePath ?? '';
     render();
 }
 
 function render() {
     dom.accessibilityStatus.textContent = state.hasAccessibilityPermission ? 'Granted' : 'Not Granted';
     dom.storagePath.textContent = state.storagePath || 'Unknown';
+    dom.opencodePath.textContent = state.opencodePath || 'Auto-detected';
     dom.cancelEditButton.classList.toggle('hidden', !state.editingOriginalTitle);
     dom.saveSnippetButton.textContent = state.editingOriginalTitle ? 'Update Snippet' : 'Save Snippet';
     dom.editorHeading.textContent = state.editingOriginalTitle
@@ -83,6 +96,7 @@ function render() {
         : 'New Snippet';
     renderSearchClear();
     renderSnippets();
+    updateAiImproveButtonState();
 }
 
 function getFilteredSnippets() {
@@ -174,6 +188,16 @@ function normalizedTitle(value) {
 
 function hasSnippetBody(value) {
     return value.trim().length > 0;
+}
+
+function isAiImproveBusy() {
+    return dom.aiImproveButton?.dataset.busy === 'true';
+}
+
+function updateAiImproveButtonState() {
+    if (!dom.aiImproveButton) return;
+    if (isAiImproveBusy()) return;
+    dom.aiImproveButton.disabled = !hasSnippetBody(dom.expansionInput.value);
 }
 
 async function saveSnippetsToNative() {
@@ -341,6 +365,87 @@ async function requestAccessibilityPermission() {
     }
 }
 
+async function browseOpencodePath() {
+    try {
+        const payload = await sendMessageToSwift('browse-opencode-path');
+        if (payload) {
+            applyPayload(payload);
+            showFlash('OpenCode binary updated.');
+        }
+    }
+    catch (error) {
+        showFlash(error.message ?? 'Failed to set OpenCode path.', true);
+    }
+}
+
+async function resetOpencodePath() {
+    try {
+        const payload = await sendMessageToSwift('reset-opencode-path');
+        applyPayload(payload);
+        showFlash('Reverted to auto-detected OpenCode path.');
+    }
+    catch (error) {
+        showFlash(error.message ?? 'Failed to reset OpenCode path.', true);
+    }
+}
+
+async function aiImproveSnippet() {
+    const currentText = dom.expansionInput.value;
+    if (!hasSnippetBody(currentText)) {
+        showFlash('Add some snippet text before improving it.', true);
+        return;
+    }
+    if (dom.aiImproveButton?.dataset.busy === 'true') {
+        return;
+    }
+
+    const originalLabel = dom.aiImproveLabel.textContent;
+    dom.aiImproveButton.dataset.busy = 'true';
+    dom.aiImproveButton.disabled = true;
+    dom.aiImproveLabel.textContent = 'Improving…';
+
+    try {
+        const result = await sendMessageToSwift('ai-improve', { text: currentText }, 180000);
+        const improved = (result?.improved ?? '').trim();
+        if (!improved) {
+            showFlash('AI returned an empty response.', true);
+            return;
+        }
+        openAiResultModal(improved);
+    }
+    catch (error) {
+        showFlash(error.message ?? 'AI improve failed.', true);
+    }
+    finally {
+        dom.aiImproveButton.dataset.busy = 'false';
+        dom.aiImproveLabel.textContent = originalLabel;
+        updateAiImproveButtonState();
+    }
+}
+
+function openAiResultModal(improvedText) {
+    dom.aiResultOutput.value = improvedText;
+    dom.aiResultModal.classList.remove('hidden');
+    dom.aiResultCopyButton.focus();
+}
+
+function closeAiResultModal() {
+    dom.aiResultModal.classList.add('hidden');
+    dom.aiResultOutput.value = '';
+}
+
+async function copyAiResult() {
+    const text = dom.aiResultOutput.value;
+    if (!text) return;
+    try {
+        await navigator.clipboard.writeText(text);
+        showFlash('Improved prompt copied to clipboard.');
+        closeAiResultModal();
+    } catch {
+        showFlash('Failed to copy to clipboard.', true);
+    }
+}
+
 async function importSnippets() {
     try {
         const payload = await sendMessageToSwift('import-snippets');
@@ -389,6 +494,14 @@ function wireEvents() {
         requestAccessibilityPermission();
     });
 
+    dom.opencodePathBrowseButton.addEventListener('click', () => {
+        browseOpencodePath();
+    });
+
+    dom.opencodePathResetButton.addEventListener('click', () => {
+        resetOpencodePath();
+    });
+
     dom.newSnippetButton.addEventListener('click', () => {
         resetForm();
         dom.titleInput.focus();
@@ -412,6 +525,10 @@ function wireEvents() {
         handleFormSubmit(event);
     });
 
+    dom.expansionInput.addEventListener('input', () => {
+        updateAiImproveButtonState();
+    });
+
     dom.cancelEditButton.addEventListener('click', () => {
         resetForm();
     });
@@ -422,6 +539,34 @@ function wireEvents() {
 
     dom.exportButton.addEventListener('click', () => {
         exportSnippets();
+    });
+
+    dom.aiImproveButton.addEventListener('click', () => {
+        aiImproveSnippet();
+    });
+
+    dom.aiResultCopyButton.addEventListener('click', () => {
+        copyAiResult();
+    });
+
+    dom.aiResultCloseButton.addEventListener('click', () => {
+        closeAiResultModal();
+    });
+
+    dom.aiResultDoneButton.addEventListener('click', () => {
+        closeAiResultModal();
+    });
+
+    dom.aiResultModal.addEventListener('click', (event) => {
+        if (event.target === dom.aiResultModal) {
+            closeAiResultModal();
+        }
+    });
+
+    window.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !dom.aiResultModal.classList.contains('hidden')) {
+            closeAiResultModal();
+        }
     });
 
     dom.snippetsList.addEventListener('click', (event) => {
@@ -566,4 +711,10 @@ function clearDropIndicator() {
 }
 
 wireEvents();
-loadInitialState();
+
+if (window.__devxpanderInitialState__) {
+    applyPayload(window.__devxpanderInitialState__);
+    delete window.__devxpanderInitialState__;
+} else {
+    loadInitialState();
+}

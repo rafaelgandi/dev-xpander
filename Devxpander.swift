@@ -76,6 +76,7 @@ struct AppStatePayload {
     var snippets: [Snippet]
     var hasAccessibilityPermission: Bool
     var storagePath: String
+    var opencodePath: String
 }
 
 func parseJSON(_ jsonString: String) -> [String: Any]? {
@@ -142,6 +143,37 @@ func stringifyJSON(_ object: Any) -> String? {
     return String(data: data, encoding: .utf8)
 }
 
+func jsQuotedString(_ text: String) -> String {
+    var out = "'"
+    for scalar in text.unicodeScalars {
+        switch scalar {
+        case "\\": out += "\\\\"
+        case "'": out += "\\'"
+        case "\n": out += "\\n"
+        case "\r": out += "\\r"
+        case "\t": out += "\\t"
+        default:
+            if scalar.value < 0x20 || scalar.value == 0x2028 || scalar.value == 0x2029 {
+                out += String(format: "\\u%04x", scalar.value)
+            }
+            else {
+                out.unicodeScalars.append(scalar)
+            }
+        }
+    }
+    out += "'"
+    return out
+}
+
+func statePayloadDictionary(_ payload: AppStatePayload) -> [String: Any] {
+    [
+        "snippets": payload.snippets.map { ["title": $0.title, "expansion": $0.expansion, "notes": $0.notes, "hidden": $0.hidden] },
+        "hasAccessibilityPermission": payload.hasAccessibilityPermission,
+        "storagePath": payload.storagePath,
+        "opencodePath": payload.opencodePath,
+    ]
+}
+
 func sendEventToJs(eventName: String, data: Any?, errorEventName: String) {
     let detailJSON: String
     if let data {
@@ -157,20 +189,14 @@ func sendEventToJs(eventName: String, data: Any?, errorEventName: String) {
     let js = "window.dispatchEvent(new CustomEvent('\(eventName)', { detail: \(detailJSON) }));"
     globalWebView?.evaluateJavaScript(js) { _, error in
         if let error {
-            let escaped = error.localizedDescription
-                .replacingOccurrences(of: "\\", with: "\\\\")
-                .replacingOccurrences(of: "'", with: "\\'")
-            let errJs = "window.dispatchEvent(new CustomEvent('\(errorEventName)', { detail: '\(escaped)' }));"
+            let errJs = "window.dispatchEvent(new CustomEvent('\(errorEventName)', { detail: \(jsQuotedString(error.localizedDescription)) }));"
             globalWebView?.evaluateJavaScript(errJs, completionHandler: nil)
         }
     }
 }
 
 func sendJsError(errorEventName: String, message: String) {
-    let escaped = message
-        .replacingOccurrences(of: "\\", with: "\\\\")
-        .replacingOccurrences(of: "'", with: "\\'")
-    let errJs = "window.dispatchEvent(new CustomEvent('\(errorEventName)', { detail: '\(escaped)' }));"
+    let errJs = "window.dispatchEvent(new CustomEvent('\(errorEventName)', { detail: \(jsQuotedString(message)) }));"
     globalWebView?.evaluateJavaScript(errJs, completionHandler: nil)
 }
 
@@ -286,6 +312,259 @@ extension JSONEncoder {
     }
 }
 
+enum AIImprover {
+    private static let model = "opencode-go/deepseek-v4-pro"
+
+    static func improve(text: String, completion: @escaping (Result<String, Error>) -> Void) {
+        let prompt = """
+        You are a prompt optimization assistant. Your job is to take a user's \
+        raw prompt and rewrite it to be clearer, simpler, and more effective.
+
+        When I give you a prompt, do the following:
+
+        1. Fix all grammar, spelling, and punctuation errors.
+        2. Simplify the wording so it's easy to understand—remove jargon, \
+           redundancy, and vague phrasing.
+        3. Make the intent and desired output explicit and unambiguous.
+        4. Preserve the original meaning and goal. Do not add new requirements \
+           the user didn't intend.
+        5. Structure it logically (use steps, bullets, or sections if helpful).
+
+        Return ONLY the improved prompt text — no preamble, no quotes, no markdown fences.
+
+        Prompt to improve:
+        \(text)
+        """
+        runOpencode(prompt: prompt, completion: completion)
+    }
+
+    private static func runOpencode(prompt: String, completion: @escaping (Result<String, Error>) -> Void) {
+        DispatchQueue.global(qos: .userInitiated).async {
+            let task = Process()
+
+            let environment = buildChildEnvironment()
+            task.environment = environment
+
+            if let resolvedURL = resolveOpencode(environment: environment) {
+                task.executableURL = resolvedURL
+                task.arguments = ["run", "-m", model, "--format", "json", prompt]
+            }
+            else {
+                task.launchPath = "/usr/bin/env"
+                task.arguments = ["opencode", "run", "-m", model, "--format", "json", prompt]
+            }
+
+            let stdoutPipe = Pipe()
+            let stderrPipe = Pipe()
+            task.standardOutput = stdoutPipe
+            task.standardError = stderrPipe
+
+            do {
+                try task.run()
+            }
+            catch {
+                DispatchQueue.main.async {
+                    completion(.failure(error))
+                }
+                return
+            }
+
+            let timeout = 120.0
+            let deadline = Date().addingTimeInterval(timeout)
+            let semaphore = DispatchSemaphore(value: 0)
+
+            DispatchQueue.global(qos: .utility).async {
+                while task.isRunning, Date() < deadline {
+                    Thread.sleep(forTimeInterval: 0.1)
+                }
+                if task.isRunning {
+                    task.terminate()
+                }
+                semaphore.signal()
+            }
+
+            task.waitUntilExit()
+            semaphore.wait()
+
+            let outData = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
+            let errData = stderrPipe.fileHandleForReading.readDataToEndOfFile()
+            let raw = String(data: outData, encoding: .utf8) ?? ""
+            let improved = extractText(from: raw)
+
+            if task.terminationStatus != 0 || improved.isEmpty {
+                var message = task.terminationStatus != 0
+                    ? "opencode exited with status \(task.terminationStatus)"
+                    : "AI returned no text."
+                if let errStr = String(data: errData, encoding: .utf8), !errStr.isEmpty {
+                    message += ": \(errStr)"
+                }
+                DispatchQueue.main.async {
+                    completion(.failure(NSError(domain: "AIImprover", code: 1, userInfo: [NSLocalizedDescriptionKey: message])))
+                }
+                return
+            }
+            DispatchQueue.main.async {
+                completion(.success(improved))
+            }
+        }
+    }
+
+    /// Parses newline-delimited JSON emitted by `opencode run --format json` and
+    /// concatenates every `{"type":"text", "part":{"text":"…"}}` fragment.
+    private static func extractText(from raw: String) -> String {
+        var pieces: [String] = []
+        for line in raw.split(separator: "\n", omittingEmptySubsequences: true) {
+            guard let lineData = String(line).data(using: .utf8),
+                  let object = try? JSONSerialization.jsonObject(with: lineData) as? [String: Any],
+                  let type = object["type"] as? String,
+                  type == "text",
+                  let part = object["part"] as? [String: Any],
+                  let text = part["text"] as? String
+            else {
+                continue
+            }
+            pieces.append(text)
+        }
+        return pieces.joined().trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static var cachedOpencodeURL: URL?
+    private static let cacheLock = NSLock()
+
+    /// Builds an environment with PATH extended to cover common installation
+    /// directories that GUI apps don't inherit (Homebrew, npm, cargo, go, etc.).
+    private static func buildChildEnvironment() -> [String: String] {
+        var environment = ProcessInfo.processInfo.environment
+        let existingPath = environment["PATH"] ?? ""
+        let home = NSHomeDirectory()
+        let extraPaths = [
+            "/opt/homebrew/bin",
+            "/opt/homebrew/sbin",
+            "/usr/local/bin",
+            "/usr/local/sbin",
+            "\(home)/.local/bin",
+            "\(home)/.cargo/bin",
+            "\(home)/.npm-global/bin",
+            "\(home)/.volta/bin",
+            "\(home)/.bun/bin",
+            "\(home)/.deno/bin",
+            "\(home)/go/bin",
+            "\(home)/.asdf/shims",
+        ]
+        environment["PATH"] = (extraPaths + [existingPath])
+            .filter { !$0.isEmpty }
+            .joined(separator: ":")
+        return environment
+    }
+
+    /// Resolves the real path of the `opencode` binary using multiple strategies:
+    ///   1. Cached result from a previous call.
+    ///   2. User-configured path (Settings).
+    ///   3. Direct search of expanded PATH directories.
+    ///   4. Login shell (`zsh -l` / `bash -l`) which sources the user's profile,
+    ///      discovering binaries managed by version managers (nvm, fnm, asdf, …).
+    ///
+    /// Launching the resolved binary directly avoids repeated macOS TCC prompts
+    /// that occur when going through `/usr/bin/env`.
+    private static func resolveOpencode(environment: [String: String]) -> URL? {
+        cacheLock.lock()
+        if let cached = cachedOpencodeURL, FileManager.default.isExecutableFile(atPath: cached.path) {
+            cacheLock.unlock()
+            return cached
+        }
+        cachedOpencodeURL = nil
+        cacheLock.unlock()
+
+        let userPath = settings.opencodePath
+        if !userPath.isEmpty {
+            let expanded = NSString(string: userPath).expandingTildeInPath
+            if FileManager.default.isExecutableFile(atPath: expanded) {
+                let url = URL(fileURLWithPath: expanded).resolvingSymlinksInPath()
+                cacheResolved(url)
+                return url
+            }
+        }
+
+        if let url = searchPath(for: "opencode", environment: environment) {
+            cacheResolved(url)
+            return url
+        }
+
+        for shell in ["/bin/zsh", "/bin/bash"] {
+            if let url = resolveViaLoginShell(shell) {
+                cacheResolved(url)
+                return url
+            }
+        }
+
+        return nil
+    }
+
+    static func clearCachedPath() {
+        cacheLock.lock()
+        cachedOpencodeURL = nil
+        cacheLock.unlock()
+    }
+
+    private static func searchPath(for name: String, environment: [String: String]) -> URL? {
+        let fm = FileManager.default
+        for dir in (environment["PATH"] ?? "").split(separator: ":") {
+            let candidate = URL(fileURLWithPath: String(dir)).appendingPathComponent(name)
+            guard fm.isExecutableFile(atPath: candidate.path) else {
+                continue
+            }
+            return candidate.resolvingSymlinksInPath()
+        }
+        return nil
+    }
+
+    /// Runs a login shell (`shell -l -c "command -v opencode"`) to discover the
+    /// binary via the user's full profile — handles nvm, fnm, asdf, Volta, etc.
+    /// The shell itself is an Apple-signed system binary, so this does NOT trigger
+    /// TCC prompts (it never executes `opencode`, only resolves its path).
+    private static func resolveViaLoginShell(_ shell: String) -> URL? {
+        guard FileManager.default.isExecutableFile(atPath: shell) else {
+            return nil
+        }
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: shell)
+        task.arguments = ["-l", "-c", "command -v opencode 2>/dev/null"]
+        let stdoutPipe = Pipe()
+        task.standardOutput = stdoutPipe
+        task.standardError = Pipe()
+        do {
+            try task.run()
+            task.waitUntilExit()
+            guard task.terminationStatus == 0 else {
+                return nil
+            }
+            let data = stdoutPipe.fileHandleForReading.readDataToEndOfFile()
+            let raw = String(data: data, encoding: .utf8) ?? ""
+            let path = raw
+                .split(separator: "\n", omittingEmptySubsequences: true)
+                .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+                .last(where: { !$0.isEmpty }) ?? ""
+            guard !path.isEmpty else {
+                return nil
+            }
+            let expanded = NSString(string: path).expandingTildeInPath
+            guard FileManager.default.isExecutableFile(atPath: expanded) else {
+                return nil
+            }
+            return URL(fileURLWithPath: expanded).resolvingSymlinksInPath()
+        }
+        catch {
+            return nil
+        }
+    }
+
+    private static func cacheResolved(_ url: URL) {
+        cacheLock.lock()
+        cachedOpencodeURL = url
+        cacheLock.unlock()
+    }
+}
+
 enum ClipboardInjector {
     /// macOS virtual key codes
     private static let kVK_Command: CGKeyCode = 0x37
@@ -333,6 +612,22 @@ enum ClipboardInjector {
     }
 }
 
+final class Settings {
+    private let defaults = UserDefaults.standard
+    private let opencodePathKey = "opencodePath"
+
+    var opencodePath: String {
+        get { defaults.string(forKey: opencodePathKey) ?? "" }
+        set { defaults.set(newValue, forKey: opencodePathKey) }
+    }
+
+    func clearOpencodePath() {
+        defaults.removeObject(forKey: opencodePathKey)
+    }
+}
+
+let settings = Settings()
+
 final class AppController {
     private let store = SnippetStore()
     var onStateChange: (() -> Void)?
@@ -341,7 +636,8 @@ final class AppController {
         AppStatePayload(
             snippets: store.getSnippets(),
             hasAccessibilityPermission: evaluateAccessibilityTrusted(promptUser: false),
-            storagePath: store.storagePath()
+            storagePath: store.storagePath(),
+            opencodePath: settings.opencodePath
         )
     }
 
@@ -422,7 +718,7 @@ final class WebViewCoordinator: NSObject, WKScriptMessageHandler {
         if action == "get-app-state" {
             sendEventToJs(
                 eventName: eventName,
-                data: payloadDictionary(appController.makePayload()),
+                data: statePayloadDictionary(appController.makePayload()),
                 errorEventName: errorEventName
             )
             return
@@ -462,7 +758,7 @@ final class WebViewCoordinator: NSObject, WKScriptMessageHandler {
                 _ = try appController.saveSnippets(snippets)
                 sendEventToJs(
                     eventName: eventName,
-                    data: payloadDictionary(appController.makePayload()),
+                    data: statePayloadDictionary(appController.makePayload()),
                     errorEventName: errorEventName
                 )
             }
@@ -494,6 +790,89 @@ final class WebViewCoordinator: NSObject, WKScriptMessageHandler {
             return
         }
 
+        if action == "ai-improve" {
+            guard let text = jsonStringValue(data["text"]), !text.isEmpty else {
+                sendJsError(errorEventName: errorEventName, message: "Missing snippet text to improve.")
+                return
+            }
+            AIImprover.improve(text: text) { result in
+                switch result {
+                case .success(let improved):
+                    sendEventToJs(
+                        eventName: eventName,
+                        data: ["improved": improved],
+                        errorEventName: errorEventName
+                    )
+                case .failure(let error):
+                    sendJsError(errorEventName: errorEventName, message: error.localizedDescription)
+                }
+            }
+            return
+        }
+
+        if action == "set-opencode-path" {
+            if let raw = jsonStringValue(data["path"])?.trimmingCharacters(in: .whitespacesAndNewlines),
+               !raw.isEmpty {
+                let expanded = NSString(string: raw).expandingTildeInPath
+                if FileManager.default.isExecutableFile(atPath: expanded) {
+                    settings.opencodePath = expanded
+                    AIImprover.clearCachedPath()
+                    sendEventToJs(
+                        eventName: eventName,
+                        data: statePayloadDictionary(appController.makePayload()),
+                        errorEventName: errorEventName
+                    )
+                }
+                else {
+                    sendJsError(errorEventName: errorEventName, message: "Not a valid executable: \(expanded)")
+                }
+            }
+            else {
+                sendJsError(errorEventName: errorEventName, message: "Missing path.")
+            }
+            return
+        }
+
+        if action == "browse-opencode-path" {
+            let panel = NSOpenPanel()
+            panel.canChooseFiles = true
+            panel.canChooseDirectories = false
+            panel.allowsMultipleSelection = false
+            panel.title = "Select the opencode executable"
+            panel.begin { response in
+                if response == .OK, let url = panel.url {
+                    let path = url.resolvingSymlinksInPath().path
+                    if FileManager.default.isExecutableFile(atPath: path) {
+                        settings.opencodePath = path
+                        AIImprover.clearCachedPath()
+                        sendEventToJs(
+                            eventName: eventName,
+                            data: statePayloadDictionary(appController.makePayload()),
+                            errorEventName: errorEventName
+                        )
+                    }
+                    else {
+                        sendJsError(errorEventName: errorEventName, message: "Selected file is not executable.")
+                    }
+                }
+                else {
+                    sendEventToJs(eventName: eventName, data: nil, errorEventName: errorEventName)
+                }
+            }
+            return
+        }
+
+        if action == "reset-opencode-path" {
+            settings.clearOpencodePath()
+            AIImprover.clearCachedPath()
+            sendEventToJs(
+                eventName: eventName,
+                data: statePayloadDictionary(appController.makePayload()),
+                errorEventName: errorEventName
+            )
+            return
+        }
+
         if action == "import-snippets" {
             let panel = NSOpenPanel()
             panel.canChooseFiles = true
@@ -506,7 +885,7 @@ final class WebViewCoordinator: NSObject, WKScriptMessageHandler {
                         _ = try appController.importSnippets(from: url)
                         sendEventToJs(
                             eventName: eventName,
-                            data: self.payloadDictionary(appController.makePayload()),
+                            data: statePayloadDictionary(appController.makePayload()),
                             errorEventName: errorEventName
                         )
                     }
@@ -527,17 +906,9 @@ final class WebViewCoordinator: NSObject, WKScriptMessageHandler {
     func broadcastStateUpdate() {
         let eventName = "swift:state-updated"
         let js = """
-        window.dispatchEvent(new CustomEvent('\(eventName)', { detail: \(stringifyJSON(payloadDictionary(appController.makePayload())) ?? "null") }));
+        window.dispatchEvent(new CustomEvent('\(eventName)', { detail: \(stringifyJSON(statePayloadDictionary(appController.makePayload())) ?? "null") }));
         """
         globalWebView?.evaluateJavaScript(js, completionHandler: nil)
-    }
-
-    private func payloadDictionary(_ payload: AppStatePayload) -> [String: Any] {
-        [
-            "snippets": payload.snippets.map { ["title": $0.title, "expansion": $0.expansion, "notes": $0.notes, "hidden": $0.hidden] },
-            "hasAccessibilityPermission": payload.hasAccessibilityPermission,
-            "storagePath": payload.storagePath,
-        ]
     }
 }
 
@@ -553,6 +924,15 @@ struct WebView: NSViewRepresentable {
         configuration.setValue(true, forKey: "allowUniversalAccessFromFileURLs")
         configuration.userContentController.add(context.coordinator, name: "swiftBridge")
         configuration.preferences.javaScriptCanOpenWindowsAutomatically = true
+
+        let payload = appController.makePayload()
+        let payloadJSON = stringifyJSON(statePayloadDictionary(payload)) ?? "null"
+        let initScript = WKUserScript(
+            source: "window.__devxpanderInitialState__ = \(payloadJSON);",
+            injectionTime: .atDocumentStart,
+            forMainFrameOnly: true
+        )
+        configuration.userContentController.addUserScript(initScript)
 
         if #available(macOS 11.0, *) {
             let preferences = WKWebpagePreferences()
