@@ -146,6 +146,24 @@
                         autocomplete="off"
                         autocapitalize="off"
                     ></textarea>
+
+                    <div class="subsnippets" aria-label="Sub-snippets">
+                        <div class="subsnippets-label">
+                            <span>Sub-snippets</span>
+                            <span class="subsnippets-hint">Press Enter to add. Shown as a secondary menu under this snippet.</span>
+                        </div>
+                        <div id="subSnippetsList" class="subsnippets-list" role="list"></div>
+                        <input
+                            id="subSnippetInput"
+                            type="text"
+                            placeholder="Add a one-line sub-snippet…"
+                            autocomplete="off"
+                            spellcheck="false"
+                            autocorrect="off"
+                            autocapitalize="off"
+                            aria-label="Add sub-snippet"
+                        />
+                    </div>
                     <div class="actions">
                         <button
                             id="saveSnippetButton"

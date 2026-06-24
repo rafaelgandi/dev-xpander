@@ -21,6 +21,7 @@ struct Snippet: Codable, Hashable {
     var expansion: String
     var notes: String
     var hidden: Bool
+    var subSnippets: [String]
 
     enum CodingKeys: String, CodingKey {
         case title
@@ -28,13 +29,15 @@ struct Snippet: Codable, Hashable {
         case expansion
         case notes
         case hidden
+        case subSnippets
     }
 
-    init(title: String, expansion: String, notes: String = "", hidden: Bool = false) {
+    init(title: String, expansion: String, notes: String = "", hidden: Bool = false, subSnippets: [String] = []) {
         self.title = title
         self.expansion = expansion
         self.notes = notes
         self.hidden = hidden
+        self.subSnippets = subSnippets
     }
 
     init(from decoder: Decoder) throws {
@@ -59,6 +62,9 @@ struct Snippet: Codable, Hashable {
         expansion = try container.decode(String.self, forKey: .expansion)
         notes = try container.decodeIfPresent(String.self, forKey: .notes) ?? ""
         hidden = try container.decodeIfPresent(Bool.self, forKey: .hidden) ?? false
+        subSnippets = (try container.decodeIfPresent([String].self, forKey: .subSnippets) ?? [])
+            .map { $0.replacingOccurrences(of: "\n", with: " ").trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
     }
 
     func encode(to encoder: Encoder) throws {
@@ -68,6 +74,9 @@ struct Snippet: Codable, Hashable {
         try container.encode(notes, forKey: .notes)
         if hidden {
             try container.encode(hidden, forKey: .hidden)
+        }
+        if !subSnippets.isEmpty {
+            try container.encode(subSnippets, forKey: .subSnippets)
         }
     }
 }
@@ -165,9 +174,30 @@ func jsQuotedString(_ text: String) -> String {
     return out
 }
 
+func normalizedSubSnippets(_ raw: Any?) -> [String] {
+    guard let array = raw as? [Any] else {
+        return []
+    }
+    return array.compactMap { item -> String? in
+        guard let text = jsonStringValue(item) else {
+            return nil
+        }
+        let cleaned = text.replacingOccurrences(of: "\n", with: " ").trimmingCharacters(in: .whitespacesAndNewlines)
+        return cleaned.isEmpty ? nil : cleaned
+    }
+}
+
 func statePayloadDictionary(_ payload: AppStatePayload) -> [String: Any] {
     [
-        "snippets": payload.snippets.map { ["title": $0.title, "expansion": $0.expansion, "notes": $0.notes, "hidden": $0.hidden] },
+        "snippets": payload.snippets.map {
+            [
+                "title": $0.title,
+                "expansion": $0.expansion,
+                "notes": $0.notes,
+                "hidden": $0.hidden,
+                "subSnippets": $0.subSnippets,
+            ]
+        },
         "hasAccessibilityPermission": payload.hasAccessibilityPermission,
         "storagePath": payload.storagePath,
         "opencodePath": payload.opencodePath,
@@ -280,7 +310,7 @@ final class SnippetStore {
                 continue
             }
             seen.insert(lower)
-            result.append(Snippet(title: label, expansion: item.expansion, notes: item.notes, hidden: item.hidden))
+            result.append(Snippet(title: label, expansion: item.expansion, notes: item.notes, hidden: item.hidden, subSnippets: item.subSnippets))
         }
         return result
     }
@@ -752,7 +782,8 @@ final class WebViewCoordinator: NSObject, WKScriptMessageHandler {
                 }
                 let notes = jsonStringValue(row["notes"]) ?? ""
                 let hidden = (row["hidden"] as? Bool) ?? false
-                return Snippet(title: resolvedTitle, expansion: expansion, notes: notes, hidden: hidden)
+                let subSnippets = normalizedSubSnippets(row["subSnippets"])
+                return Snippet(title: resolvedTitle, expansion: expansion, notes: notes, hidden: hidden, subSnippets: subSnippets)
             }
             do {
                 _ = try appController.saveSnippets(snippets)
@@ -1069,6 +1100,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             }
         }
         statusMenu.delegate = self
+        // We manage item enable-state ourselves (submenus rely on parent items staying enabled).
+        statusMenu.autoenablesItems = false
         statusItem.menu = statusMenu
     }
 
@@ -1124,6 +1157,36 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
                 let item = NSMenuItem(title: menuTitle, action: #selector(insertSnippetFromMenu(_:)), keyEquivalent: "")
                 item.target = self
                 item.representedObject = snippet
+                item.isEnabled = true
+
+                let collapsedSubSnippets = snippet.subSnippets.filter { !$0.isEmpty }
+                if !collapsedSubSnippets.isEmpty {
+                    // First item of submenu = parent snippet; remaining = sub-snippets.
+                    let submenu = NSMenu()
+                    submenu.autoenablesItems = false
+
+                    let parentItem = NSMenuItem(title: "\(snippet.title)  →  \(shortPreview(snippet.expansion))", action: #selector(insertSnippetFromMenu(_:)), keyEquivalent: "")
+                    parentItem.target = self
+                    parentItem.representedObject = snippet
+                    parentItem.isEnabled = true
+                    submenu.addItem(parentItem)
+                    submenu.addItem(NSMenuItem.separator())
+
+                    for sub in collapsedSubSnippets {
+                        let subItem = NSMenuItem(title: shortPreview(sub), action: #selector(insertSnippetFromMenu(_:)), keyEquivalent: "")
+                        subItem.target = self
+                        subItem.representedObject = Snippet(title: snippet.title, expansion: sub, notes: "", hidden: false, subSnippets: [])
+                        subItem.isEnabled = true
+                        submenu.addItem(subItem)
+                    }
+
+                    item.submenu = submenu
+                    // Keep the action set (autoenables is off); an enabled item with a submenu
+                    // still shows the secondary menu on hover. We retain representedObject so
+                    // a click on the parent row that doesn't traverse the submenu still inserts.
+                    item.isEnabled = true
+                }
+
                 statusMenu.addItem(item)
             }
         }

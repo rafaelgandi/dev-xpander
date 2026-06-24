@@ -13,6 +13,8 @@ const dom = {
     titleInput: document.getElementById('titleInput'),
     expansionInput: document.getElementById('expansionInput'),
     notesInput: document.getElementById('notesInput'),
+    subSnippetsList: document.getElementById('subSnippetsList'),
+    subSnippetInput: document.getElementById('subSnippetInput'),
     saveSnippetButton: document.getElementById('saveSnippetButton'),
     cancelEditButton: document.getElementById('cancelEditButton'),
     aiImproveButton: document.getElementById('aiImproveButton'),
@@ -35,6 +37,7 @@ const state = {
     opencodePath: '',
     editingOriginalTitle: null,
     searchQuery: '',
+    editingSubSnippets: [],
 };
 
 const drag = {
@@ -60,7 +63,18 @@ function showFlash(message, isError = false) {
 
 function normalizeSnippetRow(row) {
     const titleValue = (row.title ?? row.keyword ?? '').trim();
-    return { title: titleValue, expansion: row.expansion ?? '', notes: row.notes ?? '', hidden: Boolean(row.hidden) };
+    const subSnippets = Array.isArray(row.subSnippets)
+        ? row.subSnippets
+            .map((s) => String(s ?? '').replace(/\n/g, ' ').trim())
+            .filter((s) => s.length > 0)
+        : [];
+    return {
+        title: titleValue,
+        expansion: row.expansion ?? '',
+        notes: row.notes ?? '',
+        hidden: Boolean(row.hidden),
+        subSnippets,
+    };
 }
 
 function escapeHtml(value) {
@@ -96,6 +110,7 @@ function render() {
         : 'New Snippet';
     renderSearchClear();
     renderSnippets();
+    renderSubSnippets();
     updateAiImproveButtonState();
 }
 
@@ -110,6 +125,7 @@ function getFilteredSnippets() {
             snippet.title ?? '',
             snippet.expansion ?? '',
             snippet.notes ?? '',
+            ...(snippet.subSnippets ?? []),
         ].join('\n').toLowerCase();
         if (haystack.includes(query)) {
             matches.push({ snippet, index });
@@ -141,6 +157,10 @@ function renderSnippets() {
         const isSelected = Boolean(state.editingOriginalTitle)
             && snippet.title === state.editingOriginalTitle;
         const isHidden = Boolean(snippet.hidden);
+        const subCount = (snippet.subSnippets ?? []).length;
+        const subHtml = subCount > 0
+            ? `<p class="snippet-subs"><span class="snippet-subs-dot"></span>${subCount} sub-snippet${subCount === 1 ? '' : 's'}</p>`
+            : '';
         const notesHtml = notes
             ? `<p class="snippet-notes"><span class="snippet-notes-dot"></span>Has notes</p>`
             : '';
@@ -174,12 +194,80 @@ function renderSnippets() {
                 </div>
                 <p class="snippet-expansion">${expansion}</p>
                 ${notesHtml}
+                ${subHtml}
                 ${isHidden ? '<span class="snippet-hidden-badge">Hidden from menu bar</span>' : ''}
             </article>
         `;
     }).join('');
 
     dom.snippetsList.innerHTML = html;
+}
+
+const TRASH_ICON_SVG = `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>`;
+
+function renderSubSnippets() {
+    const items = state.editingSubSnippets;
+    const html = items.map((value, index) => `
+        <div class="subsnippet-row" role="listitem">
+            <input
+                type="text"
+                class="subsnippet-input"
+                value="${escapeHtml(value)}"
+                data-sub-index="${index}"
+                placeholder="Sub-snippet (one line)"
+                autocomplete="off"
+                spellcheck="false"
+                aria-label="Sub-snippet ${index + 1}"
+            />
+            <button
+                type="button"
+                class="button button-copy button-copy--danger subsnippet-trash"
+                data-sub-action="delete"
+                data-sub-index="${index}"
+                title="Delete sub-snippet"
+                aria-label="Delete sub-snippet"
+            >
+                ${TRASH_ICON_SVG}
+            </button>
+        </div>
+    `).join('');
+    dom.subSnippetsList.innerHTML = html;
+    dom.subSnippetsList.classList.toggle('is-empty', items.length === 0);
+}
+
+function flushPendingSubSnippet() {
+    const raw = dom.subSnippetInput.value.replace(/\n/g, ' ').trim();
+    if (!raw) {
+        dom.subSnippetInput.value = '';
+        return;
+    }
+    state.editingSubSnippets.push(raw);
+    dom.subSnippetInput.value = '';
+    renderSubSnippets();
+    focusSubSnippetInput();
+}
+
+function focusSubSnippetInput() {
+    dom.subSnippetInput.focus();
+}
+
+function addSubSnippet() {
+    flushPendingSubSnippet();
+}
+
+function deleteSubSnippet(index) {
+    if (index == null || index < 0 || index >= state.editingSubSnippets.length) {
+        return;
+    }
+    state.editingSubSnippets.splice(index, 1);
+    renderSubSnippets();
+}
+
+function updateSubSnippet(index, value) {
+    if (index == null || index < 0 || index >= state.editingSubSnippets.length) {
+        return;
+    }
+    state.editingSubSnippets[index] = value.replace(/\n/g, ' ').trim();
 }
 
 function normalizedTitle(value) {
@@ -203,7 +291,13 @@ function updateAiImproveButtonState() {
 async function saveSnippetsToNative() {
     try {
         const payload = await sendMessageToSwift('set-snippets', {
-            snippets: state.snippets.map((s) => ({ title: s.title, expansion: s.expansion, notes: s.notes, hidden: s.hidden })),
+            snippets: state.snippets.map((s) => ({
+                title: s.title,
+                expansion: s.expansion,
+                notes: s.notes,
+                hidden: s.hidden,
+                subSnippets: s.subSnippets ?? [],
+            })),
         });
         applyPayload(payload);
     }
@@ -215,9 +309,11 @@ async function saveSnippetsToNative() {
 
 function resetForm() {
     state.editingOriginalTitle = null;
+    state.editingSubSnippets = [];
     dom.titleInput.value = '';
     dom.expansionInput.value = '';
     dom.notesInput.value = '';
+    dom.subSnippetInput.value = '';
     render();
 }
 
@@ -227,9 +323,11 @@ function startEditing(index) {
         return;
     }
     state.editingOriginalTitle = snippet.title;
+    state.editingSubSnippets = [...(snippet.subSnippets ?? [])];
     dom.titleInput.value = snippet.title;
     dom.expansionInput.value = snippet.expansion;
     dom.notesInput.value = snippet.notes ?? '';
+    dom.subSnippetInput.value = '';
     dom.titleInput.focus();
     render();
 }
@@ -246,7 +344,7 @@ async function copySnippet(index) {
 }
 
 async function deleteSnippet(index) {
-    const previousSnippets = state.snippets.map((s) => ({ title: s.title, expansion: s.expansion, notes: s.notes, hidden: s.hidden }));
+    const previousSnippets = state.snippets.map((s) => ({ title: s.title, expansion: s.expansion, notes: s.notes, hidden: s.hidden, subSnippets: [...(s.subSnippets ?? [])] }));
     const next = state.snippets.filter((_, i) => i !== index);
     state.snippets = next;
     try {
@@ -270,7 +368,7 @@ async function toggleHidden(index) {
     if (!snippet) {
         return;
     }
-    const previousSnippets = state.snippets.map((s) => ({ title: s.title, expansion: s.expansion, notes: s.notes, hidden: s.hidden }));
+    const previousSnippets = state.snippets.map((s) => ({ title: s.title, expansion: s.expansion, notes: s.notes, hidden: s.hidden, subSnippets: [...(s.subSnippets ?? [])] }));
     state.snippets[index] = { ...snippet, hidden: !snippet.hidden };
     try {
         await saveSnippetsToNative();
@@ -296,7 +394,7 @@ async function reorderSnippets(fromIndex, toIndex, above) {
     if (insertAt > state.snippets.length) {
         insertAt = state.snippets.length;
     }
-    const previousSnippets = state.snippets.map((s) => ({ title: s.title, expansion: s.expansion, notes: s.notes, hidden: s.hidden }));
+    const previousSnippets = state.snippets.map((s) => ({ title: s.title, expansion: s.expansion, notes: s.notes, hidden: s.hidden, subSnippets: [...(s.subSnippets ?? [])] }));
     const [moved] = state.snippets.splice(fromIndex, 1);
     state.snippets.splice(insertAt, 0, moved);
     try {
@@ -313,6 +411,7 @@ async function handleFormSubmit(event) {
     const title = normalizedTitle(dom.titleInput.value);
     const expansion = dom.expansionInput.value;
     const notes = dom.notesInput.value;
+    const subSnippets = [...state.editingSubSnippets];
     if (!title) {
         showFlash('Menu label is required.', true);
         return;
@@ -322,23 +421,30 @@ async function handleFormSubmit(event) {
         return;
     }
 
+    // Commit any in-progress entry from the add input.
+    flushPendingSubSnippet();
+
     const duplicateIndex = state.snippets.findIndex(
         (snippet) => snippet.title.toLowerCase() === title.toLowerCase(),
     );
-    const previousSnippets = state.snippets.map((s) => ({ title: s.title, expansion: s.expansion, notes: s.notes, hidden: s.hidden }));
+    const previousSnippets = state.snippets.map((s) => ({ title: s.title, expansion: s.expansion, notes: s.notes, hidden: s.hidden, subSnippets: [...(s.subSnippets ?? [])] }));
     const previousEditing = state.editingOriginalTitle;
 
     if (state.editingOriginalTitle) {
-        const filtered = state.snippets.filter((snippet) => snippet.title !== state.editingOriginalTitle);
-        filtered.push({ title, expansion, notes });
-        state.snippets = filtered;
+        const editingIndex = state.snippets.findIndex((snippet) => snippet.title === state.editingOriginalTitle);
+        if (editingIndex < 0) {
+            state.snippets = [...state.snippets, { title, expansion, notes, subSnippets: [...state.editingSubSnippets] }];
+        }
+        else {
+            state.snippets[editingIndex] = { title, expansion, notes, subSnippets: [...state.editingSubSnippets] };
+        }
     }
     else {
         if (duplicateIndex >= 0) {
             showFlash('That menu label already exists. Edit it instead.', true);
             return;
         }
-        state.snippets = [...state.snippets, { title, expansion, notes }];
+        state.snippets = [...state.snippets, { title, expansion, notes, subSnippets: [...state.editingSubSnippets] }];
     }
 
     try {
@@ -527,6 +633,74 @@ function wireEvents() {
 
     dom.expansionInput.addEventListener('input', () => {
         updateAiImproveButtonState();
+    });
+
+    dom.subSnippetInput.addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            addSubSnippet();
+        }
+    });
+    dom.subSnippetInput.addEventListener('blur', () => {
+        if (dom.subSnippetInput.value.trim()) {
+            addSubSnippet();
+        }
+    });
+
+    dom.subSnippetsList.addEventListener('click', (event) => {
+        const target = event.target.closest('[data-sub-action]');
+        if (!(target instanceof HTMLElement)) {
+            return;
+        }
+        const index = Number(target.dataset.subIndex);
+        if (Number.isNaN(index)) {
+            return;
+        }
+        if (target.dataset.subAction === 'delete') {
+            deleteSubSnippet(index);
+        }
+    });
+
+    dom.subSnippetsList.addEventListener('input', (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement) || !target.classList.contains('subsnippet-input')) {
+            return;
+        }
+        const index = Number(target.dataset.subIndex);
+        if (Number.isNaN(index)) {
+            return;
+        }
+        updateSubSnippet(index, target.value);
+    });
+
+    dom.subSnippetsList.addEventListener('keydown', (event) => {
+        const target = event.target;
+        if (!(target instanceof HTMLElement) || !target.classList.contains('subsnippet-input')) {
+            return;
+        }
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            if (target.value.trim()) {
+                updateSubSnippet(Number(target.dataset.subIndex), target.value);
+                dom.subSnippetInput.focus();
+            }
+            else {
+                addSubSnippet();
+            }
+        }
+        if (event.key === 'Backspace' && target.value === '') {
+            const index = Number(target.dataset.subIndex);
+            if (!Number.isNaN(index) && index > 0) {
+                event.preventDefault();
+                deleteSubSnippet(index);
+                const previous = dom.subSnippetsList.querySelector(`[data-sub-index="${index - 1}"].subsnippet-input`);
+                if (previous instanceof HTMLElement) {
+                    previous.focus();
+                    const len = previous.value.length;
+                    previous.setSelectionRange(len, len);
+                }
+            }
+        }
     });
 
     dom.cancelEditButton.addEventListener('click', () => {

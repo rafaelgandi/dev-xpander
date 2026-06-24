@@ -902,6 +902,82 @@ textarea {
     box-shadow: 0 0 8px color-mix(in srgb, var(--accent) 60%, transparent);
 }
 
+.snippet-subs {
+    margin: 4px 0 0;
+    color: var(--text-tertiary);
+    font-size: 11.5px;
+    line-height: 1.4;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.snippet-subs-dot {
+    flex: 0 0 auto;
+    width: 5px;
+    height: 5px;
+    border-radius: 1.5px;
+    background: color-mix(in srgb, var(--ok) 70%, transparent);
+    box-shadow: 0 0 8px color-mix(in srgb, var(--ok) 60%, transparent);
+}
+
+/* ---- Sub-snippets repeater ---- */
+
+.subsnippets {
+    display: grid;
+    gap: 8px;
+}
+
+.subsnippets-label {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: 0 2px;
+
+    & > span:first-child {
+        font-size: 11px;
+        font-weight: 650;
+        letter-spacing: 0.085em;
+        text-transform: uppercase;
+        color: var(--text-tertiary);
+    }
+}
+
+.subsnippets-hint {
+    font-size: 11.5px;
+    color: var(--text-tertiary);
+    line-height: 1.4;
+}
+
+.subsnippets-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+
+    &.is-empty {
+        display: none;
+    }
+}
+
+.subsnippet-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.subsnippet-input {
+    flex: 1 1 auto;
+    min-width: 0;
+    border-radius: 14px;
+    padding: 10px 14px;
+    font-family: ui-monospace, "SF Mono", SFMono-Regular, Menlo, monospace;
+    font-size: 12.5px;
+}
+
+.subsnippet-trash {
+    flex: 0 0 auto;
+}
+
 .flash {
     margin: 0;
     border-radius: 18px;
