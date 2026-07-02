@@ -28,6 +28,9 @@ const dom = {
     searchInput: document.getElementById('searchInput'),
     searchClearButton: document.getElementById('searchClearButton'),
     flashMessage: document.getElementById('flashMessage'),
+    tokenizerOutput: document.getElementById('tokenOutput'),
+    tokenCount: document.getElementById('tokenCount'),
+    charCount: document.getElementById('charCount'),
 };
 
 const state = {
@@ -315,6 +318,7 @@ function resetForm() {
     dom.notesInput.value = '';
     dom.subSnippetInput.value = '';
     render();
+    refreshTokenizer();
 }
 
 function startEditing(index) {
@@ -330,6 +334,7 @@ function startEditing(index) {
     dom.subSnippetInput.value = '';
     dom.titleInput.focus();
     render();
+    refreshTokenizer();
 }
 
 async function copySnippet(index) {
@@ -883,6 +888,108 @@ function clearDropIndicator() {
     dom.snippetsList.querySelectorAll('.is-drop-above,.is-drop-below')
         .forEach((el) => el.classList.remove('is-drop-above', 'is-drop-below'));
 }
+
+// ─── Tokenizer (GPT-5.x · o200k_base) ─────────────────────────────
+
+const TOKENIZER_HUES = [262, 205, 330, 162, 26, 290, 122, 8, 45, 220, 88, 312];
+
+function colorForRank(rank) {
+    const hue = TOKENIZER_HUES[Math.abs(rank) % TOKENIZER_HUES.length];
+    return {
+        background: `hsl(${hue} 64% 62% / 0.20)`,
+        border: `hsl(${hue} 64% 62% / 0.42)`,
+    };
+}
+
+const tokenizer = {
+    busy: false,
+    pendingText: null,
+    debounceTimer: null,
+};
+
+function getTokenizer() {
+    if (!window.TiktokenLib) {
+        return Promise.reject(new Error('Tokenizer library unavailable.'));
+    }
+    return Promise.resolve(window.TiktokenLib);
+}
+
+function escapeHtmlChunk(value) {
+    return value
+        .replaceAll('&', '&amp;')
+        .replaceAll('<', '&lt;')
+        .replaceAll('>', '&gt;')
+        .replaceAll('"', '&quot;')
+        .replaceAll("'", '&#039;');
+}
+
+function renderTokens(tokens, pieces) {
+    const out = dom.tokenizerOutput;
+    dom.tokenCount.textContent = String(tokens.length);
+    dom.charCount.textContent = String(dom.expansionInput.value.length);
+
+    if (tokens.length === 0) {
+        out.innerHTML = '';
+        out.classList.add('is-empty');
+        out.classList.remove('is-loading', 'is-error');
+        return;
+    }
+    out.classList.remove('is-empty', 'is-loading', 'is-error');
+
+    let html = '';
+    for (let i = 0; i < pieces.length; i++) {
+        const piece = pieces[i];
+        const rank = tokens[i];
+        if (piece === '\n') {
+            html += '<span class="tok-nl">↵\n</span>';
+            continue;
+        }
+        if (piece === '') {
+            continue;
+        }
+        const { background, border } = colorForRank(rank);
+        const label = escapeHtmlChunk(piece).replaceAll('\n', '↵\n');
+        html += `<span class="tok" style="background:${background};border-color:${border};" title="rank ${rank}">${label}</span>`;
+    }
+    out.innerHTML = html;
+}
+
+async function runTokenizer(text) {
+    if (text == null) text = dom.expansionInput.value;
+    if (!text) {
+        renderTokens([], []);
+        return;
+    }
+    dom.tokenizerOutput.classList.add('is-loading');
+    dom.tokenizerOutput.classList.remove('is-empty', 'is-error');
+    try {
+        const mod = await getTokenizer();
+        const { tokens, pieces } = await mod.tokenizeWithText(text);
+        renderTokens(tokens, pieces);
+    } catch (error) {
+        console.error('Tokenizer failed', error);
+        dom.tokenizerOutput.innerHTML = '';
+        dom.tokenizerOutput.classList.add('is-error');
+        dom.tokenizerOutput.classList.remove('is-loading', 'is-empty');
+    }
+}
+
+function scheduleTokenizer() {
+    window.clearTimeout(tokenizer.debounceTimer);
+    tokenizer.debounceTimer = window.setTimeout(() => {
+        runTokenizer(dom.expansionInput.value);
+    }, 180);
+}
+
+function refreshTokenizer() {
+    runTokenizer(dom.expansionInput.value);
+}
+
+function wireTokenizer() {
+    dom.expansionInput.addEventListener('input', scheduleTokenizer);
+}
+
+wireTokenizer();
 
 wireEvents();
 

@@ -529,6 +529,10 @@ textarea {
     line-height: 1.5;
 }
 
+#expansionInput {
+    min-height: 450px;
+}
+
 .actions {
     display: flex;
     gap: 10px;
@@ -1204,5 +1208,127 @@ textarea {
     .card-header {
         flex-direction: column;
         align-items: stretch;
+    }
+}
+
+/* ─── Tokenizer ─────────────────────────────────────────────────── */
+
+.tokenizer-card {
+    margin-top: 22px;
+}
+
+.tokenizer-header {
+    flex-wrap: wrap;
+}
+
+.tokenizer-model {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: var(--text-secondary);
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--accent) 16%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 32%, transparent);
+}
+
+.tokenizer-subtitle {
+    margin: -8px 0 16px;
+    font-size: 13px;
+    color: var(--text-secondary);
+}
+
+.tokenizer-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 16px;
+}
+
+.tokenizer-stats {
+    display: flex;
+    gap: 18px;
+}
+
+.tokenizer-stat {
+    font-size: 13px;
+    color: var(--text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+.tokenizer-stat-value {
+    color: var(--text-primary);
+    font-weight: 650;
+    font-size: 15px;
+}
+
+.token-output {
+    border-radius: 18px;
+    padding: 14px 16px;
+    background: color-mix(in srgb, var(--glass-fill) 60%, transparent);
+    border: 1px solid var(--glass-stroke-soft);
+    min-height: 64px;
+    max-height: 360px;
+    overflow-y: auto;
+    overflow-x: hidden;
+    line-height: 2;
+    font-family: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, monospace;
+    font-size: 13px;
+    white-space: pre-wrap;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+}
+
+.token-output:empty::before,
+.token-output.is-empty::before {
+    content: "Snippet text will be tokenized here.";
+    color: var(--text-tertiary);
+    font-style: italic;
+}
+
+.token-output.is-loading::before {
+    content: "Loading tokenizer…";
+    color: var(--text-tertiary);
+    font-style: italic;
+}
+
+.token-output.is-error::before {
+    content: "Could not tokenize text.";
+    color: var(--danger);
+    font-style: italic;
+}
+
+.tok {
+    display: inline;
+    padding: 2px 4px;
+    margin: 1px 0;
+    border-radius: 6px;
+    border: 1px solid rgb(255 255 255 / 0.08);
+    white-space: pre-wrap;
+    overflow-wrap: anywhere;
+    background: rgb(255 255 255 / 0.05);
+    color: var(--text-primary);
+    transition: transform var(--motion-fast) var(--ease-spring);
+}
+
+.tok:hover {
+    transform: translateY(-1px);
+    border-color: rgb(255 255 255 / 0.22);
+}
+
+.tok-nl {
+    display: inline;
+    white-space: pre;
+    color: var(--text-tertiary);
+    opacity: 0.55;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .tok {
+        transition: none;
+    }
+    .tok:hover {
+        transform: none;
     }
 }

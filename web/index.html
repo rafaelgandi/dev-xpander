@@ -198,6 +198,23 @@
                 </form>
             </section>
 
+            <section class="card tokenizer-card">
+                <div class="card-header tokenizer-header">
+                    <h2>Tokenizer</h2>
+                    <span class="tokenizer-model">GPT-5.x · o200k_base</span>
+                </div>
+                <p class="tokenizer-subtitle">Live tokenization of the snippet text in the editor above. Runs locally (offline).</p>
+
+                <div class="tokenizer-toolbar">
+                    <div class="tokenizer-stats">
+                        <span class="tokenizer-stat"><span id="tokenCount" class="tokenizer-stat-value">0</span> tokens</span>
+                        <span class="tokenizer-stat"><span id="charCount" class="tokenizer-stat-value">0</span> characters</span>
+                    </div>
+                </div>
+
+                <div id="tokenOutput" class="token-output" aria-live="polite" aria-label="Tokenized output"></div>
+            </section>
+
             <p id="flashMessage" class="flash hidden"></p>
         </section>
     </main>
@@ -251,6 +268,7 @@
     </div>
 
     <script src="./swift-bridge.js"></script>
+    <script src="./lib/tiktoken.js"></script>
     <script src="./app.js"></script>
 </body>
 </html>

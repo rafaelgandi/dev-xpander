@@ -1282,16 +1282,19 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
     }
 
     func createManagerWindow() {
+        let screenFrame = NSScreen.main?.visibleFrame ?? NSRect(x: 0, y: 0, width: 1280, height: 800)
+        let initialWidth = screenFrame.width * 0.8
+        let initialHeight = screenFrame.height * 0.9
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 1000, height: 640),
+            contentRect: NSRect(x: 0, y: 0, width: initialWidth, height: initialHeight),
             styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
         window.title = "Devxpander - Snippet Manager"
         window.center()
-        window.minSize = NSSize(width: 1000, height: 520)
-        window.maxSize = NSSize(width: 1000, height: CGFloat.greatestFiniteMagnitude)
+        window.minSize = NSSize(width: 800, height: 520)
+        window.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
         if #available(macOS 10.14, *) {
             window.appearance = NSAppearance(named: .darkAqua)
         }
